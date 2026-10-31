@@ -23,12 +23,19 @@ public:
     explicit KWinFakeInput(VkbdWaylandInputBackend *backend, QObject *parent = nullptr);
 
     bool shouldUseFakeInput(int key) const;
+    bool supportsKey(int key) const;
     bool sendKeyPressed(int key, bool pressed);
+
+    /**
+     * Types text by emulating key presses on a US keymap.
+     *
+     * Used when there is no input context to commit text into.
+     */
+    bool sendText(const QString &text);
 
 private:
     bool ensureInitialized();
     bool isModifier(int key) const;
-    bool supportsKey(int key) const;
     void clearPressedModifiers();
     void sendFakeKeyboardKey(int key, bool pressed);
 

@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 add_library(plasma-keyboard-virtualkeyboard STATIC
+    cursordragtracker.cpp
+    cursordragtracker.h
+    emojimodel.cpp
+    emojimodel.h
     inputbackend.cpp
     inputbackend.h
     inputengine.cpp
@@ -25,6 +29,12 @@ add_library(plasma-keyboard-virtualkeyboard STATIC
     virtualkeyboardcontext.h
     wordcandidatelistmodel.cpp
     wordcandidatelistmodel.h
+)
+
+qt_add_resources(plasma-keyboard-virtualkeyboard "emoji"
+    PREFIX "/plasma-keyboard/emoji"
+    BASE data
+    FILES data/emoji-test.txt
 )
 
 target_include_directories(plasma-keyboard-virtualkeyboard
@@ -88,10 +98,14 @@ ecm_target_qml_sources(keyboardvirtualkeyboardcomponents SOURCES
     components/LanguagePopup.qml
     components/KeyboardRow.qml
     components/PreeditBubble.qml
+    components/layers/EditingLayer.qml
+    components/layers/EmojiLayer.qml
+    components/layers/TerminalLayer.qml
     components/keys/ActionKey.qml
     components/keys/AbstractKey.qml
     components/keys/BackspaceKey.qml
     components/keys/ChangeLanguageKey.qml
+    components/keys/CursorPad.qml
     components/keys/EnterKey.qml
     components/keys/FillerKey.qml
     components/keys/FlickKey.qml
@@ -101,7 +115,9 @@ ecm_target_qml_sources(keyboardvirtualkeyboardcomponents SOURCES
     components/keys/Key.qml
     components/keys/KeyMouseArea.qml
     components/keys/KeysymKey.qml
+    components/keys/LayerKey.qml
     components/keys/ShiftKey.qml
+    components/keys/ShortcutKey.qml
     components/keys/SpaceKey.qml
     components/keys/SymbolModeKey.qml
 )

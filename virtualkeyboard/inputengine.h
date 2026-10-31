@@ -84,6 +84,17 @@ public:
     /** Sends a key event directly to the backend, bypassing composition. */
     Q_INVOKABLE bool sendDirectKey(int key, bool pressed);
     Q_INVOKABLE bool isKeyPressed(int key) const;
+
+    /**
+     * Sends a key while holding modifiers, e.g. Ctrl+C. Modifiers that weren't
+     * already held are released shortly after.
+     */
+    Q_INVOKABLE bool sendShortcut(int key, const QList<int> &modifiers);
+
+    /**
+     * Moves the text cursor by sending arrow keys, optionally extending the selection.
+     */
+    Q_INVOKABLE void moveCursor(int horizontalSteps, int verticalSteps, bool select);
     Q_INVOKABLE bool selectCandidate(int index);
     Q_INVOKABLE void commit();
     Q_INVOKABLE void commit(const QString &text, int replaceFrom = 0, int replaceLength = 0);
@@ -114,6 +125,7 @@ private:
     void resetShiftState();
     void updateAutomaticShift();
     bool sendDirectKeyClick(int key);
+    void releaseKeysLater(const QList<int> &keys);
     int utf16PositionFromUtf8Offset(uint32_t offset) const;
 
     InputBackend *m_backend = nullptr;

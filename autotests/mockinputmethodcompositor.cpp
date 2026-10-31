@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSignalSpy>
@@ -24,10 +25,12 @@
 #include <QtWaylandCompositor/QWaylandOutputMode>
 #include <QtWaylandCompositor/QWaylandSeat>
 #include <QtWaylandCompositor/QWaylandSurface>
+#include <QtWaylandCompositor/QWaylandView>
 #include <QtWaylandCompositor/QWaylandXdgShell>
 #include <private/qxkbcommon_p.h>
 
 #include "mockinputmethodcompositor_config.h"
+#include "qwayland-server-fake-input.h"
 #include "qwayland-server-input-method-unstable-v1.h"
 #include "qwayland-server-wayland.h"
 
@@ -378,6 +381,14 @@ public:
         return m_surface;
     }
 
+    /**
+     * The surface shown as the keyboard, as opposed to overlay popups such as diacritics.
+     */
+    QWaylandSurface *toplevelSurface() const
+    {
+        return m_toplevelSurface ? m_toplevelSurface.data() : m_surface;
+    }
+
 Q_SIGNALS:
     void inputPanelSurfaceCreated();
     void overlayPanelRequested();
@@ -406,7 +417,8 @@ protected:
         });
 
         auto *panelSurface = new InputPanelSurface(wlSurface, resource->client(), id, resource->version(), this);
-        connect(panelSurface, &InputPanelSurface::toplevelRequested, this, [this] {
+        connect(panelSurface, &InputPanelSurface::toplevelRequested, this, [this, wlSurface] {
+            m_toplevelSurface = wlSurface;
             ++m_toplevelPanelCount;
             Q_EMIT toplevelPanelRequested();
         });
@@ -423,6 +435,43 @@ private:
     int m_toplevelPanelCount = 0;
     wl_resource *m_surfaceResource = nullptr;
     QWaylandSurface *m_surface = nullptr;
+    QPointer<QWaylandSurface> m_toplevelSurface;
+};
+
+/**
+ * Mock of KWin's fake input protocol, recording emulated key events.
+ */
+class FakeInputV1 : public QWaylandCompositorExtensionTemplate<FakeInputV1>, public QtWaylandServer::org_kde_kwin_fake_input
+{
+    Q_OBJECT
+public:
+    explicit FakeInputV1(QWaylandCompositor *compositor)
+        : QWaylandCompositorExtensionTemplate<FakeInputV1>(compositor)
+    {
+    }
+
+    void initialize() override
+    {
+        QWaylandCompositorExtensionTemplate::initialize();
+        auto *compositor = static_cast<QWaylandCompositor *>(extensionContainer());
+        init(compositor->display(), 4);
+    }
+
+    /**
+     * Key events as "<linux key code>:<pressed>" strings, in order.
+     */
+    QStringList events;
+
+Q_SIGNALS:
+    void keyboardKey(uint32_t key, uint32_t state);
+
+protected:
+    void org_kde_kwin_fake_input_keyboard_key(Resource *resource, uint32_t button, uint32_t state) override
+    {
+        Q_UNUSED(resource)
+        events.append(QStringLiteral("%1:%2").arg(button).arg(state));
+        Q_EMIT keyboardKey(button, state);
+    }
 };
 
 class InputMethodV1 : public QWaylandCompositorExtensionTemplate<InputMethodV1>, public QtWaylandServer::zwp_input_method_v1
@@ -574,6 +623,14 @@ private Q_SLOTS:
 
         m_inputPanel = std::make_unique<InputPanelV1>(m_compositor.get());
         m_inputPanel->initialize();
+
+        m_fakeInput = std::make_unique<FakeInputV1>(m_compositor.get());
+        m_fakeInput->initialize();
+
+        // Track the panel's buffers so screenshots can be taken
+        connect(m_inputPanel.get(), &InputPanelV1::toplevelPanelRequested, this, [this] {
+            m_panelView.setSurface(m_inputPanel->toplevelSurface());
+        });
         m_inputMethod->setInputPanel(m_inputPanel.get());
 
         m_child = std::make_unique<QProcess>();
@@ -690,7 +747,7 @@ private Q_SLOTS:
             QVERIFY(surfaceSpy.wait());
         }
 
-        auto *surface = m_inputPanel->surface();
+        auto *surface = m_inputPanel->toplevelSurface();
         QVERIFY(surface);
         QTRY_VERIFY_WITH_TIMEOUT(surface->hasContent(), 5000);
 
@@ -711,7 +768,7 @@ private Q_SLOTS:
      */
     QSize inputPanelSurfaceSize() const
     {
-        auto *surface = m_inputPanel->surface();
+        auto *surface = m_inputPanel->toplevelSurface();
         if (!surface) {
             return {};
         }
@@ -746,6 +803,24 @@ private Q_SLOTS:
         QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
         QCOMPARE(commitStringSpy.count(), 1);
         QCOMPARE(commitStringSpy.first().first().toString(), QStringLiteral("q"));
+    }
+
+    // Verify the area above the keys belongs to the keyboard, so stray taps don't reach the window behind
+    void testTopPaddingIsInteractive()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        auto *surface = m_inputPanel->toplevelSurface();
+        const QSize surfaceSize = inputPanelSurfaceSize();
+        const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
+        saveScreenshot(u"main"_s);
+
+        // Just above the keys and the toolbar strip is the padding area
+        const int stripHeight = 31;
+        const QPoint paddingPoint(surfaceSize.width() / 2, surfaceSize.height() - keyboardHeight - stripHeight - 12);
+        QVERIFY(surface->inputRegionContains(paddingPoint));
+
+        // Well above the keyboard input goes to other windows
+        QVERIFY(!surface->inputRegionContains(QPoint(surfaceSize.width() / 2, surfaceSize.height() - keyboardHeight - 200)));
     }
 
     // Verify navigation consumes its keys and Escape restores forwarding
@@ -817,15 +892,10 @@ private Q_SLOTS:
 
         m_inputMethod->sendDeactivate();
         wl_display_flush_clients(m_compositor->display());
-        QTest::qWait(100);
+        // Hiding is delayed so that briefly lost contexts don't close the keyboard
+        QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
 
-        m_inputMethod->sendActivate();
-        wl_display_flush_clients(m_compositor->display());
-        QVERIFY(m_inputMethod->context());
-        if (!m_inputMethod->context()->keyboard()) {
-            QSignalSpy grabSpy(m_inputMethod->context(), &InputMethodContext::keyboardGrabbed);
-            QVERIFY(grabSpy.wait());
-        }
+        reactivateInputMethod();
 
         QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
         sendKey(KEY_RIGHT, 20);
@@ -836,6 +906,34 @@ private Q_SLOTS:
         QCOMPARE(commitStringSpy.first().first().toString(), QStringLiteral("q"));
 
         sendKey(KEY_ESC, 100);
+    }
+
+    // Verify a text input that is briefly torn down and recreated does not hide the keyboard
+    void testContextFlickerKeepsKeyboardVisible()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(100);
+        QVERIFY(inputPanelMapped());
+
+        reactivateInputMethod();
+        QTest::qWait(800);
+        QVERIFY(inputPanelMapped());
+    }
+
+    // Verify the keyboard hides once the context stays gone, and comes back with a new one
+    void testLostContextHidesKeyboardAfterDelay()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+        QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
+
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
     }
 
     // Verify long press keeps alternate selection open
@@ -1081,6 +1179,99 @@ private Q_SLOTS:
         QCOMPARE(keySpy.at(last).at(1).toUInt(), static_cast<uint32_t>(WL_KEYBOARD_KEY_STATE_RELEASED));
     }
 
+    // Verify the editing layer sends clipboard shortcuts through key emulation
+    void testEditingLayerSendsCopy()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        m_fakeInput->events.clear();
+
+        tapToolbarButton(1);
+        saveScreenshot(u"editing"_s);
+
+        // Copy is the third of six keys in the top row
+        tapInputPanel(keyPosition(0, 2.5 / 6));
+        QTRY_COMPARE(m_fakeInput->events, QStringList({u"29:1"_s, u"46:1"_s, u"46:0"_s, u"29:0"_s}));
+
+        // Back to letters, which commit text again
+        tapInputPanel(keyPosition(3, 50.0 / 600));
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"q"_s);
+    }
+
+    // Verify the terminal layer sends control sequences
+    void testTerminalLayerSendsControlC()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        m_fakeInput->events.clear();
+
+        tapToolbarButton(2);
+        saveScreenshot(u"terminal"_s);
+
+        tapInputPanel(keyPosition(1, 0.05));
+        QTRY_COMPARE(m_fakeInput->events, QStringList({u"29:1"_s, u"46:1"_s, u"46:0"_s, u"29:0"_s}));
+
+        tapInputPanel(keyPosition(3, 75.0 / 1000));
+    }
+
+    // Verify picking an emoji commits it
+    void testEmojiLayerCommitsEmoji()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        tapToolbarButton(0);
+        saveScreenshot(u"emoji"_s);
+
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"😀"_s);
+
+        tapInputPanel(keyPosition(3, 75.0 / 1300));
+    }
+
+    // Verify swiping on the spacebar moves the cursor instead of typing a space
+    void testSpacebarSwipeMovesCursor()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        m_fakeInput->events.clear();
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+
+        const QPointF spaceCenter = keyPosition(3, 0.5);
+        dragInputPanel(spaceCenter - QPointF(100, 0), spaceCenter + QPointF(100, 0), 20);
+
+        // KEY_RIGHT presses and releases
+        QTRY_VERIFY(m_fakeInput->events.count(u"106:1"_s) >= 3);
+        QCOMPARE(m_fakeInput->events.count(u"106:1"_s), m_fakeInput->events.count(u"106:0"_s));
+        QTest::qWait(100);
+        QCOMPARE(commitStringSpy.count(), 0);
+    }
+
+    // Verify a pinned keyboard stays without an input context and types by emulating keys
+    void testPinnedKeyboardTypesWithoutContext()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        // Pin is the second button from the right
+        tapInputPanel(toolbarButtonPosition(-2));
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(1000);
+        QVERIFY(inputPanelMapped());
+
+        m_fakeInput->events.clear();
+        tapInputPanel(keyPosition(0, 0.05));
+        QTRY_COMPARE(m_fakeInput->events, QStringList({u"16:1"_s, u"16:0"_s}));
+
+        // Unpinning hides the keyboard again
+        tapInputPanel(toolbarButtonPosition(-2));
+        QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
+
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
     void cleanupTestCase()
     {
         if (m_child) {
@@ -1093,6 +1284,117 @@ private Q_SLOTS:
     }
 
 private:
+    /**
+     * Helper that returns whether the input panel surface is currently mapped with content.
+     */
+    bool inputPanelMapped() const
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        return surface && surface->hasContent();
+    }
+
+    /**
+     * Saves the input panel's current buffer to $PLASMA_KEYBOARD_SCREENSHOT_DIR/<name>.png, if set.
+     *
+     * Only useful while developing, to look at what the keyboard renders.
+     */
+    void saveScreenshot(const QString &name)
+    {
+        const QString directory = qEnvironmentVariable("PLASMA_KEYBOARD_SCREENSHOT_DIR");
+        auto *surface = m_inputPanel->toplevelSurface();
+        if (directory.isEmpty() || !surface) {
+            return;
+        }
+
+        // Let the client finish rendering after the last interaction
+        bool delayOk = false;
+        const int delay = qEnvironmentVariableIntValue("PLASMA_KEYBOARD_SCREENSHOT_DELAY", &delayOk);
+        QTest::qWait(delayOk ? delay : 300);
+        if (m_panelView.surface() != surface) {
+            m_panelView.setSurface(surface);
+        }
+        m_panelView.advance();
+        const QImage image = m_panelView.currentBuffer().image();
+        if (!image.isNull()) {
+            image.save(directory + u'/' + name + u".png"_s);
+        }
+    }
+
+    /**
+     * Helper that drags a finger across the on-screen keyboard.
+     */
+    void dragInputPanel(const QPointF &from, const QPointF &to, int steps = 10)
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        QVERIFY(surface);
+
+        constexpr int touchId = 0;
+        m_seat->sendTouchPointPressed(surface, touchId, from);
+        m_seat->sendTouchFrameEvent(surface->client());
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(30);
+
+        for (int i = 1; i <= steps; ++i) {
+            const QPointF position = from + (to - from) * (qreal(i) / steps);
+            m_seat->sendTouchPointMoved(surface, touchId, position);
+            m_seat->sendTouchFrameEvent(surface->client());
+            wl_display_flush_clients(m_compositor->display());
+            QTest::qWait(16);
+        }
+
+        m_seat->sendTouchPointReleased(surface, touchId, to);
+        m_seat->sendTouchFrameEvent(surface->client());
+        wl_display_flush_clients(m_compositor->display());
+    }
+
+    /**
+     * Center of a key, given its row (0 is the top row of 4) and horizontal position as a fraction of the width.
+     */
+    QPointF keyPosition(int row, qreal horizontalFraction) const
+    {
+        const QSize surfaceSize = inputPanelSurfaceSize();
+        const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
+        constexpr int numberOfRows = 4;
+        return QPointF(surfaceSize.width() * horizontalFraction, surfaceSize.height() - keyboardHeight + keyboardHeight * (2 * row + 1) / (numberOfRows * 2));
+    }
+
+    /**
+     * Center of a toolbar button. Negative indices count from the right edge.
+     */
+    QPointF toolbarButtonPosition(int index) const
+    {
+        const QSize surfaceSize = inputPanelSurfaceSize();
+        const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
+        constexpr qreal stripHeight = 31;
+        constexpr qreal buttonWidth = stripHeight * 1.4;
+        const qreal x = index >= 0 ? buttonWidth * (index + 0.5) : surfaceSize.width() + buttonWidth * (index + 0.5);
+        return QPointF(x, surfaceSize.height() - keyboardHeight - stripHeight / 2 - 2);
+    }
+
+    /**
+     * Taps a toolbar button and waits until the keyboard has rendered the result.
+     */
+    void tapToolbarButton(int index)
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        QVERIFY(surface);
+        QSignalSpy damageSpy(surface, &QWaylandSurface::damaged);
+        tapInputPanel(toolbarButtonPosition(index));
+        QVERIFY(damageSpy.count() || damageSpy.wait());
+        QTest::qWait(RUNNING_IN_CI ? 300 : 100);
+    }
+
+    void reactivateInputMethod()
+    {
+        m_inputMethod->sendActivate();
+        wl_display_flush_clients(m_compositor->display());
+        QVERIFY(m_inputMethod->context());
+        if (!m_inputMethod->context()->keyboard()) {
+            QSignalSpy grabSpy(m_inputMethod->context(), &InputMethodContext::keyboardGrabbed);
+            QVERIFY(grabSpy.wait());
+        }
+    }
+
     /**
      * Helper that simulates compositor-side auto-repeat when a key is held.
      *
@@ -1145,6 +1447,8 @@ private:
     std::unique_ptr<QWaylandXdgShell> m_xdgShell;
     std::unique_ptr<InputMethodV1> m_inputMethod;
     std::unique_ptr<InputPanelV1> m_inputPanel;
+    std::unique_ptr<FakeInputV1> m_fakeInput;
+    QWaylandView m_panelView;
     std::unique_ptr<QProcess> m_child;
 };
 

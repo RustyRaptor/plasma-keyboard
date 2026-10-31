@@ -3,6 +3,7 @@
 
 import QtQuick
 
+import org.kde.plasma.keyboard
 import org.kde.plasma.keyboard.virtualkeyboard
 
 // Space key that labels itself with the current input language.
@@ -13,5 +14,6 @@ Key {
     displayText: VirtualKeyboard.inputEngine ? Qt.locale(VirtualKeyboard.inputEngine.locale).nativeLanguageName : ""
     noModifier: true
     showPreview: false
+    cursorDragEnabled: PlasmaKeyboardSettings.spacebarCursorEnabled
     textPixelSize: 24 * scaleHint
 }

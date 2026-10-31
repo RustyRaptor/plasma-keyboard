@@ -35,6 +35,7 @@ InputPanelWindow {
         keyboardPanel.inputPanel.resetNavigation();
         if (visible) {
             keyboardPanel.keyboardController.symbolMode = false;
+            keyboardPanel.keyboardController.layer = "";
         } else {
             if (keyboardPanel.languagePopup) {
                 keyboardPanel.languagePopup.close();
@@ -73,6 +74,7 @@ InputPanelWindow {
         id: keyboardPanel
         hostWindow: root
         virtualKeyboardContext: root.virtualKeyboardContext
+        inputMethodConnection: root.inputMethodConnection
         onShowSettingsRequested: root.showSettings();
     }
 }

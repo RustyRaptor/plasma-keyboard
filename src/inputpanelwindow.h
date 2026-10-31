@@ -32,6 +32,11 @@ public:
     Q_INVOKABLE void showSettings();
 
     /**
+     * Restores the default position and size of the keyboard panel.
+     */
+    Q_INVOKABLE void resetPanelGeometry();
+
+    /**
      * Initialize this window as an input panel for the compositor.
      *
      * @param role The intended compositor role for the window.
@@ -43,5 +48,7 @@ Q_SIGNALS:
     void interactiveRegionChanged();
 
 private:
+    void updateMask();
+
     QRect m_interactiveRegion;
 };

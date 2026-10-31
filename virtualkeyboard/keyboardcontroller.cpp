@@ -117,12 +117,20 @@ void KeyboardController::setSymbolMode(bool symbolMode)
     }
 
     m_symbolMode = symbolMode;
+    if (m_symbolMode && !m_layer.isEmpty()) {
+        m_layer.clear();
+        Q_EMIT layerChanged();
+    }
     Q_EMIT symbolModeChanged();
     Q_EMIT layoutTypeChanged();
 }
 
 QString KeyboardController::layoutType() const
 {
+    if (!m_layer.isEmpty()) {
+        return m_layer;
+    }
+
     const auto hints = m_inputEngine->inputMethodHints();
     if (hints.testFlag(Qt::ImhDialableCharactersOnly)) {
         return QStringLiteral("dialpad");
@@ -137,6 +145,31 @@ QString KeyboardController::layoutType() const
         return QStringLiteral("symbols");
     }
     return QStringLiteral("main");
+}
+
+QString KeyboardController::layer() const
+{
+    return m_layer;
+}
+
+void KeyboardController::setLayer(const QString &layer)
+{
+    if (m_layer == layer) {
+        return;
+    }
+
+    m_layer = layer;
+    if (!m_layer.isEmpty() && m_symbolMode) {
+        m_symbolMode = false;
+        Q_EMIT symbolModeChanged();
+    }
+    Q_EMIT layerChanged();
+    Q_EMIT layoutTypeChanged();
+}
+
+void KeyboardController::toggleLayer(const QString &layer)
+{
+    setLayer(m_layer == layer ? QString() : layer);
 }
 
 void KeyboardController::cycleLayout()

@@ -8,6 +8,8 @@
 #include "inputpanelwindow.h"
 
 #include "inputpanelintegration.h"
+#include "panelgeometry.h"
+#include "plasmakeyboardsettings.h"
 
 #include <KSandbox>
 #include <QDesktopServices>
@@ -18,6 +20,9 @@ InputPanelWindow::InputPanelWindow(QWindow *parent)
     : QQuickWindow{parent}
 {
     setFlag(Qt::FramelessWindowHint);
+
+    connect(this, &QWindow::widthChanged, this, &InputPanelWindow::updateMask);
+    connect(this, &QWindow::heightChanged, this, &InputPanelWindow::updateMask);
 }
 
 QRect InputPanelWindow::interactiveRegion() const
@@ -32,9 +37,13 @@ void InputPanelWindow::setInteractiveRegion(QRect interactiveRegion)
     }
     m_interactiveRegion = interactiveRegion;
     Q_EMIT interactiveRegionChanged();
+    updateMask();
+}
 
+void InputPanelWindow::updateMask()
+{
     // Set only a part of the window to be interactive
-    setMask(QRegion(m_interactiveRegion));
+    setMask(PanelGeometry::inputRegion(m_interactiveRegion, size()));
 }
 
 void InputPanelWindow::showSettings()
@@ -44,6 +53,18 @@ void InputPanelWindow::showSettings()
     } else {
         QDesktopServices::openUrl(QUrl(QStringLiteral("systemsettings:kcm_plasmakeyboard")));
     }
+}
+
+void InputPanelWindow::resetPanelGeometry()
+{
+    auto *settings = PlasmaKeyboardSettings::self();
+    const auto keys = {"panelFloating", "panelPositionX", "panelPositionY", "panelHeightScale", "panelWidthFraction"};
+    for (const char *key : keys) {
+        if (auto *item = settings->findItem(QString::fromLatin1(key))) {
+            item->setDefault();
+        }
+    }
+    settings->save();
 }
 
 bool InputPanelWindow::initInputPanel(InputPanelRole::Role role)

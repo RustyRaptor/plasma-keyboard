@@ -10,6 +10,11 @@
 #include "textcomposers/abstracttextcomposer.h"
 
 #include <QLocale>
+#include <QTimer>
+
+using namespace std::chrono_literals;
+
+static constexpr auto MODIFIER_RELEASE_DELAY = 20ms;
 
 static bool isNonShiftModifierKey(int key)
 {
@@ -273,6 +278,66 @@ bool InputEngine::sendDirectKey(int key, bool pressed)
 bool InputEngine::isKeyPressed(int key) const
 {
     return m_backend->pressedKeys().contains(key);
+}
+
+bool InputEngine::sendShortcut(int key, const QList<int> &modifiers)
+{
+    QList<int> pressedModifiers;
+    for (const int modifier : modifiers) {
+        if (m_backend->pressedKeys().contains(modifier)) {
+            continue;
+        }
+        if (!m_backend->sendKeyPressed(modifier, true)) {
+            releaseKeysLater(pressedModifiers);
+            return false;
+        }
+        pressedModifiers.append(modifier);
+    }
+
+    const bool sent = m_backend->sendKeyPressed(key, true) && m_backend->sendKeyPressed(key, false);
+    releaseKeysLater(pressedModifiers);
+    return sent;
+}
+
+void InputEngine::moveCursor(int horizontalSteps, int verticalSteps, bool select)
+{
+    if (horizontalSteps == 0 && verticalSteps == 0) {
+        return;
+    }
+
+    commit();
+
+    QList<int> pressedModifiers;
+    if (select && !m_backend->pressedKeys().contains(Qt::Key_Shift) && m_backend->sendKeyPressed(Qt::Key_Shift, true)) {
+        pressedModifiers.append(Qt::Key_Shift);
+    }
+
+    const int horizontalKey = horizontalSteps > 0 ? Qt::Key_Right : Qt::Key_Left;
+    for (int i = 0; i < qAbs(horizontalSteps); ++i) {
+        m_backend->sendKeyClick(horizontalKey);
+    }
+    const int verticalKey = verticalSteps > 0 ? Qt::Key_Down : Qt::Key_Up;
+    for (int i = 0; i < qAbs(verticalSteps); ++i) {
+        m_backend->sendKeyClick(verticalKey);
+    }
+
+    releaseKeysLater(pressedModifiers);
+}
+
+void InputEngine::releaseKeysLater(const QList<int> &keys)
+{
+    if (keys.isEmpty()) {
+        return;
+    }
+
+    // Give the client a moment to see the modifiers before releasing them
+    QTimer::singleShot(MODIFIER_RELEASE_DELAY, this, [this, keys] {
+        for (const int key : keys) {
+            if (m_backend->pressedKeys().contains(key)) {
+                m_backend->sendKeyPressed(key, false);
+            }
+        }
+    });
 }
 
 bool InputEngine::selectCandidate(int index)

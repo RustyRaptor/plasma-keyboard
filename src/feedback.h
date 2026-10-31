@@ -17,7 +17,10 @@
 
 #if PLASMA_KEYBOARD_VIBRATION_ENABLED
 #include "hapticinterface.h"
+#include "steamdeckhaptics.h"
 #include "vibrationevent.h"
+
+#include <memory>
 #endif
 
 /**
@@ -49,6 +52,9 @@ private:
 
 #if PLASMA_KEYBOARD_VIBRATION_ENABLED
     void playVibration(Event event);
+    bool playSteamDeckVibration(int durationMs);
     OrgSigxcpuFeedbackHapticInterface *m_hapticInterface = nullptr;
+    std::unique_ptr<SteamDeckHaptics> m_steamDeckHaptics;
+    bool m_steamDeckProbed = false;
 #endif
 };

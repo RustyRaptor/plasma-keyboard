@@ -22,6 +22,26 @@ Item {
     property real topPadding: padding
     property real bottomPadding: padding
 
+    /**
+     * Multiplier for the height of the keys.
+     */
+    property real heightScale: 1
+
+    /**
+     * Width available to the keyboard.
+     */
+    property real maximumWidth: Screen.width
+
+    /**
+     * Whether the keyboard stretches to fill maximumWidth.
+     */
+    property bool fillWidth: PlasmaKeyboardSettings.panelFillScreenWidth
+
+    /**
+     * Toolbar shown in the candidate strip while there are no word candidates.
+     */
+    property Component toolbar: null
+
     readonly property var inputEngine: virtualKeyboardContext ? virtualKeyboardContext.inputEngine : VirtualKeyboard.inputEngine
     readonly property var keyboardController: virtualKeyboardContext ? virtualKeyboardContext.keyboardController : VirtualKeyboard.keyboardController
     readonly property var keyboardPackageResolver: virtualKeyboardContext ? virtualKeyboardContext.keyboardPackageResolver : VirtualKeyboard.keyboardPackageResolver
@@ -38,7 +58,7 @@ Item {
     implicitWidth: __keyboardWidth
 
     // Always have the keyboard panel be 30% of the screen height, or 150px, whichever is larger
-    readonly property real __baseKeyboardInputAreaHeight: Math.max(Screen.height * 0.3, 150)
+    readonly property real __baseKeyboardInputAreaHeight: Math.max(Screen.height * 0.3, 150) * heightScale
     readonly property real __keyboardInputAreaHeight: __baseKeyboardInputAreaHeight * (layoutLoader.item?.panelHeightFactor ?? 1)
     readonly property real __contentHeight: __keyboardInputAreaHeight + (candidateStrip.visible ? candidateStrip.implicitHeight : 0)
     readonly property real __horizontalPadding: leftPadding + rightPadding
@@ -48,10 +68,10 @@ Item {
 
     // The value to multiply the height by to get the width
     readonly property real aspectRatio: {
-        // Ratio to just fill the screen width
-        const availableWidth = Math.max(0, Screen.width - __horizontalPadding);
+        // Ratio to just fill the available width
+        const availableWidth = Math.max(0, maximumWidth - __horizontalPadding);
         const fillScreenWidthRatio = availableWidth / __contentHeight;
-        if (PlasmaKeyboardSettings.panelFillScreenWidth) {
+        if (fillWidth) {
             return fillScreenWidthRatio;
         }
 
@@ -73,6 +93,28 @@ Item {
         return 700;
     }
     readonly property real panelScaleHint: Math.max(0.3, __keyboardInputAreaHeight / __keyboardDesignHeight)
+
+    // Layers that layouts don't need to provide themselves
+    readonly property var __builtinLayers: ({
+        "editing": editingLayer,
+        "terminal": terminalLayer,
+        "emoji": emojiLayer,
+    })
+
+    Component {
+        id: editingLayer
+        EditingLayer {}
+    }
+
+    Component {
+        id: terminalLayer
+        TerminalLayer {}
+    }
+
+    Component {
+        id: emojiLayer
+        EmojiLayer {}
+    }
 
     function resetNavigation() {
         keyboardNavigation.resetNavigation();
@@ -135,6 +177,7 @@ Item {
             id: candidateStrip
             Layout.fillWidth: true
             inputEngine: root.inputEngine
+            toolbar: root.toolbar
         }
 
         Loader {
@@ -145,7 +188,12 @@ Item {
             Layout.preferredHeight: root.__keyboardInputAreaHeight
             Layout.alignment: Qt.AlignHCenter
 
-            sourceComponent: root.layoutDefinition ? (root.layoutDefinition[root.layoutType] ?? root.layoutDefinition.main) : null
+            sourceComponent: {
+                if (!root.layoutDefinition) {
+                    return null;
+                }
+                return root.layoutDefinition[root.layoutType] ?? root.__builtinLayers[root.layoutType] ?? root.layoutDefinition.main;
+            }
 
             onLoaded: {
                 resetNavigation();

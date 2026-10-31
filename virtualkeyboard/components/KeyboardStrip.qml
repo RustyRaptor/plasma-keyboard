@@ -7,6 +7,8 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 
+import org.kde.kirigami as Kirigami
+
 import org.kde.plasma.keyboard
 import org.kde.plasma.keyboard.virtualkeyboard
 
@@ -17,18 +19,28 @@ Rectangle {
 
     property var inputEngine: VirtualKeyboard.inputEngine
     property bool navigationModeActive: false
+
+    /**
+     * Shown instead of the candidates while there are none, or when the user switches to it.
+     */
+    property Component toolbar: null
+    property bool __toolbarRequested: false
+    readonly property bool toolbarShown: toolbar !== null && (!hasCandidates || __toolbarRequested)
     readonly property real candidateHorizontalPadding: Math.round(28 * BreezeConstants.scaleHint)
     readonly property int candidateCount: candidateView.count
     readonly property bool hasNavigationSelection: candidateView.currentIndex >= 0
     readonly property bool hasCandidates: inputEngine && inputEngine.wordCandidateListVisibleHint
 
-    visible: hasCandidates
+    visible: hasCandidates || toolbar !== null
     implicitHeight: Math.round(100 * BreezeConstants.scaleHint)
     color: BreezeConstants.selectionListBackgroundColor
 
     function resetNavigation() {
         candidateView.currentIndex = -1;
     }
+
+    onHasCandidatesChanged: __toolbarRequested = false
+
 
     function ensureNavigationSelection(fromRight) {
         if (candidateCount <= 0) {
@@ -70,9 +82,43 @@ Rectangle {
         return true;
     }
 
+    Loader {
+        id: toolbarLoader
+        anchors.fill: parent
+        active: root.toolbarShown
+        sourceComponent: root.toolbar
+    }
+
+    // Switches between the candidates and the toolbar while there are candidates
+    Item {
+        id: toolbarToggle
+        visible: root.toolbar !== null && root.hasCandidates
+        width: visible ? height : 0
+        height: parent.height
+        anchors.right: parent.right
+        z: 2
+
+        Kirigami.Icon {
+            anchors.centerIn: parent
+            width: Math.round(parent.height * 0.4)
+            height: width
+            source: root.__toolbarRequested ? "go-previous-symbolic" : "overflow-menu-symbolic"
+            color: BreezeConstants.selectionListTextColor
+        }
+
+        TapHandler {
+            onTapped: {
+                Feedback.play(Feedback.Press);
+                root.__toolbarRequested = !root.__toolbarRequested;
+            }
+        }
+    }
+
     ListView {
         id: candidateView
+        visible: !root.toolbarShown
         anchors.fill: parent
+        anchors.rightMargin: toolbarToggle.width
         orientation: ListView.Horizontal
         spacing: 0
         clip: true

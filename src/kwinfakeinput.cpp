@@ -6,6 +6,7 @@
 
 #include "kwinfakeinput.h"
 
+#include "fakeinputtext.h"
 #include "keycodes.h"
 #include "qwayland-fake-input.h"
 #include "vkbdwaylandinputbackend.h"
@@ -163,6 +164,28 @@ bool KWinFakeInput::sendKeyPressed(int key, bool pressed)
     if (!pressed && !isModifier(key) && m_backend && !m_backend->pressedKeys().isEmpty()) {
         // HACK: clear modifiers after a delay, otherwise it might not be registered by the app
         QTimer::singleShot(20, this, &KWinFakeInput::clearPressedModifiers);
+    }
+    return true;
+}
+
+bool KWinFakeInput::sendText(const QString &text)
+{
+    const auto strokes = FakeInputText::strokesForText(text);
+    if (strokes.isEmpty() || !ensureInitialized()) {
+        return false;
+    }
+
+    const bool shiftHeld = m_backend && m_backend->pressedKeys().contains(Qt::Key_Shift);
+    for (const auto &stroke : strokes) {
+        const bool needsShift = stroke.shift && !shiftHeld;
+        if (needsShift) {
+            sendFakeKeyboardKey(Qt::Key_Shift, true);
+        }
+        sendFakeKeyboardKey(stroke.key, true);
+        sendFakeKeyboardKey(stroke.key, false);
+        if (needsShift) {
+            sendFakeKeyboardKey(Qt::Key_Shift, false);
+        }
     }
     return true;
 }

@@ -19,6 +19,29 @@
         <entry key="vibrationMs" type="Int">
             <default>10</default>
         </entry>
+        <entry key="vibrationBackend" type="Enum">
+            <label>Which device produces haptic feedback.</label>
+            <choices>
+                <choice name="Auto"/>
+                <choice name="Feedbackd"/>
+                <choice name="SteamDeck"/>
+            </choices>
+            <default>Auto</default>
+        </entry>
+        <entry key="vibrationStrength" type="Int">
+            <label>Strength of haptic feedback in percent.</label>
+            <min>0</min>
+            <max>100</max>
+            <default>100</default>
+        </entry>
+        <entry key="steamDeckHapticMode" type="Enum">
+            <label>Whether the Steam Deck ticks its trackpads or rumbles its motors.</label>
+            <choices>
+                <choice name="Trackpads"/>
+                <choice name="Rumble"/>
+            </choices>
+            <default>Trackpads</default>
+        </entry>
         <entry key="characterPopupEnabled" type="Bool">
             <label>Whether pressing a text key shows a character popup.</label>
             <default>true</default>
@@ -39,6 +62,58 @@
         <entry key="panelFillScreenWidth" type="Bool">
             <label>Whether the keyboard panel fills the screen width.</label>
             <default>true</default>
+        </entry>
+        <entry key="panelTopPadding" type="Int">
+            <label>Height of the area above the keys that absorbs stray taps, in pixels.</label>
+            <min>0</min>
+            <max>200</max>
+            <default>24</default>
+        </entry>
+        <entry key="panelFloating" type="Bool">
+            <label>Whether the keyboard panel floats at a custom position instead of docking to the bottom.</label>
+            <default>false</default>
+        </entry>
+        <entry key="panelPositionX" type="Double">
+            <label>Horizontal position of the floating panel, from 0 (left) to 1 (right).</label>
+            <min>0</min>
+            <max>1</max>
+            <default>0.5</default>
+        </entry>
+        <entry key="panelPositionY" type="Double">
+            <label>Vertical position of the floating panel, from 0 (top) to 1 (bottom).</label>
+            <min>0</min>
+            <max>1</max>
+            <default>1</default>
+        </entry>
+        <entry key="panelHeightScale" type="Double">
+            <label>Multiplier for the height of the keys.</label>
+            <min>0.4</min>
+            <max>2</max>
+            <default>1</default>
+        </entry>
+        <entry key="panelWidthFraction" type="Double">
+            <label>Width of the floating panel as a fraction of the screen width.</label>
+            <min>0.25</min>
+            <max>1</max>
+            <default>0.6</default>
+        </entry>
+        <entry key="panelHideDelayMs" type="Int">
+            <label>Delay (ms) before hiding the keyboard after the text field loses its input context.</label>
+            <min>0</min>
+            <max>3000</max>
+            <default>400</default>
+        </entry>
+        <entry key="toolbarEnabled" type="Bool">
+            <label>Whether a toolbar with layers and tools is shown above the keys.</label>
+            <default>true</default>
+        </entry>
+        <entry key="spacebarCursorEnabled" type="Bool">
+            <label>Whether swiping on the spacebar moves the text cursor.</label>
+            <default>true</default>
+        </entry>
+        <entry key="recentEmojis" type="StringList">
+            <label>Recently used emoji, most recent first.</label>
+            <default></default>
         </entry>
         <entry key="diacriticsPopupEnabled" type="Bool">
             <label>Whether holding a physical key shows diacritic options.</label>

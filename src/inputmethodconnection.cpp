@@ -92,6 +92,14 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
 {
     m_input.setGrabbing(true);
 
+    m_visibility.setHideDelay(PlasmaKeyboardSettings::self()->panelHideDelayMs());
+    connect(PlasmaKeyboardSettings::self(), &PlasmaKeyboardSettings::panelHideDelayMsChanged, this, [this] {
+        m_visibility.setHideDelay(PlasmaKeyboardSettings::self()->panelHideDelayMs());
+    });
+    connect(&m_visibility, &PanelVisibility::visibleChanged, this, &InputMethodConnection::updateWindowVisible);
+    connect(&m_visibility, &PanelVisibility::pinnedChanged, this, &InputMethodConnection::pinnedChanged);
+    connect(&m_visibility, &PanelVisibility::detachedChanged, this, &InputMethodConnection::detachedChanged);
+
     m_overlayController->registerTrigger(new LongPressTrigger(m_virtualKeyboardContext->inputEngine(), m_overlayController));
     m_overlayController->registerTrigger(new PrefixQueryTrigger(m_overlayController));
     m_overlayController->registerTrigger(new TextExpansionTrigger(m_overlayController));
@@ -114,11 +122,10 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
         }
 
         if (!m_input.hasContext()) {
-            m_hidden = false;
             m_vkbdInputBackend->reset();
         }
 
-        updateWindowVisible();
+        m_visibility.setHasContext(m_input.hasContext());
     });
 
     connect(&m_input, &InputPlugin::surroundingTextChanged, this, [this, syncBackendState] {
@@ -128,10 +135,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             m_overlayController->handleSurroundingTextChanged();
         }
 
-        if (m_input.hasContext()) {
-            m_hidden = false;
-            updateWindowVisible();
-        }
+        m_visibility.notifyContextActivity();
     });
 
     connect(&m_input, &InputPlugin::contentTypeChanged, this, [this, syncBackendState] {
@@ -221,11 +225,28 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             return;
         }
 
+        if (!m_input.hasContext()) {
+            // Pinned or lingering without a text input: emulate the keys instead
+            m_fakeInput->sendText(text);
+            return;
+        }
+
         m_input.commit(text);
     });
 
     connect(m_vkbdInputBackend, &VkbdWaylandInputBackend::deleteSurroundingTextRequested, this, [this](int index, int length) {
         if (!m_window || !m_window->isExposed()) {
+            return;
+        }
+
+        if (!m_input.hasContext()) {
+            // Without surrounding text only deleting right before the cursor can be emulated
+            if (index == -length) {
+                for (int i = 0; i < length; ++i) {
+                    m_fakeInput->sendKeyPressed(Qt::Key_Backspace, true);
+                    m_fakeInput->sendKeyPressed(Qt::Key_Backspace, false);
+                }
+            }
             return;
         }
 
@@ -237,7 +258,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             return false;
         }
 
-        if (m_fakeInput->shouldUseFakeInput(key)) {
+        if (m_fakeInput->shouldUseFakeInput(key) || (!m_input.hasContext() && m_fakeInput->supportsKey(key))) {
             // Send this key over kwin-fake-input instead of input-method-v1 (true keyboard emulation)
             return m_fakeInput->sendKeyPressed(key, pressed);
         }
@@ -319,9 +340,23 @@ void InputMethodConnection::setKeyboardNavigationActive(bool active)
 
 void InputMethodConnection::hide()
 {
-    m_hidden = true;
+    m_visibility.hide();
     m_vkbdInputBackend->reset();
-    updateWindowVisible();
+}
+
+bool InputMethodConnection::pinned() const
+{
+    return m_visibility.pinned();
+}
+
+void InputMethodConnection::setPinned(bool pinned)
+{
+    m_visibility.setPinned(pinned);
+}
+
+bool InputMethodConnection::detached() const
+{
+    return m_visibility.detached();
 }
 
 VirtualKeyboardContext *InputMethodConnection::virtualKeyboardContext() const
@@ -340,7 +375,7 @@ void InputMethodConnection::updateWindowVisible()
         return;
     }
 
-    m_window->setVisible(m_input.hasContext() && !m_hidden);
+    m_window->setVisible(m_visibility.visible());
 }
 
 #include "moc_inputmethodconnection.cpp"

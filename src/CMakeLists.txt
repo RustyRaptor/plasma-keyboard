@@ -18,6 +18,8 @@ ecm_add_qtwayland_client_protocol(plasma-keyboard PROTOCOL "${Wayland_DATADIR}/w
 qt6_generate_wayland_protocol_client_sources(plasma-keyboard FILES ${PLASMA_WAYLAND_PROTOCOLS_DIR}/fake-input.xml ${private_code_option})
 
 target_sources(plasma-keyboard PRIVATE
+    fakeinputtext.cpp
+    fakeinputtext.h
     feedback.cpp
     feedback.h
     keycodes.h
@@ -37,6 +39,10 @@ target_sources(plasma-keyboard PRIVATE
     inputpanelwindow.h
     inputplugin.cpp
     inputplugin.h
+    panelgeometry.cpp
+    panelgeometry.h
+    panelvisibility.cpp
+    panelvisibility.h
     vkbdwaylandinputbackend.cpp
     vkbdwaylandinputbackend.h
     qwaylandinputpanelshellintegration.cpp
@@ -66,6 +72,8 @@ if(PLASMA_KEYBOARD_VIBRATION_ENABLED)
         dbus/org.sigxcpu.Feedback.Haptic.xml)
 
     target_sources(plasma-keyboard PRIVATE
+        steamdeckhaptics.cpp
+        steamdeckhaptics.h
         vibrationevent.h
         ${dbusinterface_SRCS}
     )
@@ -97,6 +105,9 @@ ecm_target_qml_sources(plasma-keyboard SOURCES
     qml/KeyboardPanel.qml
     qml/DiacriticsOverlay.qml
     qml/OverlayWindow.qml
+    qml/AdjustOverlay.qml
+    qml/KeyboardToolbar.qml
+    qml/ToolbarButton.qml
 )
 ecm_finalize_qml_module(plasma-keyboard)
 

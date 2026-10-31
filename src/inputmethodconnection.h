@@ -14,6 +14,7 @@
 #include <qqmlintegration.h>
 
 #include "inputplugin.h"
+#include "panelvisibility.h"
 
 class OverlayController;
 class KWinFakeInput;
@@ -40,6 +41,16 @@ class InputMethodConnection : public QObject
      */
     Q_PROPERTY(OverlayController *overlayController READ overlayController CONSTANT)
 
+    /**
+     * Keep the keyboard on screen when the focused text input goes away.
+     */
+    Q_PROPERTY(bool pinned READ pinned WRITE setPinned NOTIFY pinnedChanged)
+
+    /**
+     * Whether the keyboard is shown without an input context, typing through key emulation.
+     */
+    Q_PROPERTY(bool detached READ detached NOTIFY detachedChanged)
+
 public:
     explicit InputMethodConnection(QObject *parent = nullptr);
 
@@ -50,6 +61,9 @@ public:
     bool keyboardNavigationActive() const;
     void setKeyboardNavigationActive(bool active);
     Q_INVOKABLE void hide();
+    bool pinned() const;
+    void setPinned(bool pinned);
+    bool detached() const;
 
     VirtualKeyboardContext *virtualKeyboardContext() const;
 
@@ -64,6 +78,8 @@ Q_SIGNALS:
     void keyboardNavigationActiveChanged();
     void keyNavigationPressed(int key);
     void keyNavigationReleased(int key);
+    void pinnedChanged();
+    void detachedChanged();
 
 private:
     void updateWindowVisible();
@@ -73,8 +89,8 @@ private:
     VirtualKeyboardContext *m_virtualKeyboardContext = nullptr;
     KWinFakeInput *m_fakeInput = nullptr;
     OverlayController *m_overlayController = nullptr;
+    PanelVisibility m_visibility;
     QPointer<QWindow> m_window;
-    bool m_hidden = false;
     bool m_keyboardNavigationAvailable = false;
     bool m_keyboardNavigationActive = false;
 };

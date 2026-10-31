@@ -29,6 +29,11 @@ class KeyboardController : public QObject
     Q_PROPERTY(bool symbolMode READ symbolMode WRITE setSymbolMode NOTIFY symbolModeChanged)
     Q_PROPERTY(QString layoutType READ layoutType NOTIFY layoutTypeChanged)
 
+    /**
+     * An extra layer shown instead of the layout (e.g. "editing", "terminal", "emoji"), or empty.
+     */
+    Q_PROPERTY(QString layer READ layer WRITE setLayer NOTIFY layerChanged)
+
 public:
     explicit KeyboardController(InputEngine *inputEngine, KeyboardPackageResolver *packageResolver, QObject *parent = nullptr);
 
@@ -45,6 +50,10 @@ public:
 
     QString layoutType() const;
 
+    QString layer() const;
+    void setLayer(const QString &layer);
+    Q_INVOKABLE void toggleLayer(const QString &layer);
+
     Q_INVOKABLE void cycleLayout();
     Q_INVOKABLE void setCurrentLayout(const QString &layoutId);
     Q_INVOKABLE QString layoutDisplayName(const QString &layoutId) const;
@@ -55,6 +64,7 @@ Q_SIGNALS:
     void activeLayoutIdsChanged();
     void symbolModeChanged();
     void layoutTypeChanged();
+    void layerChanged();
 
 private:
     void refreshLayoutId();
@@ -67,4 +77,5 @@ private:
     QString m_layoutId;
     QStringList m_activeLayoutIds;
     bool m_symbolMode = false;
+    QString m_layer;
 };

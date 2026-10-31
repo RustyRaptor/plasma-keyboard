@@ -1,5 +1,6 @@
 /*
     SPDX-FileCopyrightText: 2026 Devin Lin <devin@kde.org>
+    SPDX-FileCopyrightText: 2026 Ziad Arafat <ziadarafat1@gmail.com>
 
     SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
@@ -16,6 +17,7 @@ Kirigami.ShadowedRectangle {
 
     property var hostWindow: null
     property var virtualKeyboardContext: null
+    property var inputMethodConnection: null
     property alias inputPanel: inputPanel
     property alias languagePopup: languagePopup
     property alias alternativeKeysPopup: alternativeKeysPopup
@@ -23,10 +25,39 @@ Kirigami.ShadowedRectangle {
     property alias flickPreviewPopup: flickPreviewPopup
     readonly property var keyboardController: virtualKeyboardContext ? virtualKeyboardContext.keyboardController : null
 
-    readonly property bool isFloating: false
+    readonly property bool isFloating: PlasmaKeyboardSettings.panelFloating
     readonly property bool isFullScreenWidth: !isFloating && PlasmaKeyboardSettings.panelFillScreenWidth
 
+    /**
+     * Whether the move and resize handles are shown.
+     */
+    property bool adjusting: false
+
     signal showSettingsRequested()
+
+    readonly property real __baseInputAreaHeight: Math.max(Screen.height * 0.3, 150)
+    readonly property real __heightScale: {
+        const offset = adjustOverlay.resizeOffset.y;
+        // A docked keyboard grows upwards, a floating one downwards
+        const delta = isFloating ? offset : -offset;
+        return clampHeightScale(PlasmaKeyboardSettings.panelHeightScale + delta / __baseInputAreaHeight);
+    }
+    readonly property real __widthFraction: clampWidthFraction(PlasmaKeyboardSettings.panelWidthFraction + adjustOverlay.resizeOffset.x / Screen.width)
+
+    readonly property size __hostSize: hostWindow ? Qt.size(hostWindow.width, hostWindow.height) : Qt.size(0, 0)
+    readonly property rect __floatingRect: PanelGeometry.placePanel(__hostSize, Qt.size(width, height), Qt.point(PlasmaKeyboardSettings.panelPositionX, PlasmaKeyboardSettings.panelPositionY))
+
+    function clampHeightScale(scale) {
+        return Math.max(0.4, Math.min(2, scale));
+    }
+
+    function clampWidthFraction(fraction) {
+        return Math.max(0.25, Math.min(1, fraction));
+    }
+
+    function saveSettings() {
+        PlasmaKeyboardSettings.save();
+    }
 
     color: BreezeConstants.keyboardBackgroundColor
 
@@ -42,10 +73,28 @@ Kirigami.ShadowedRectangle {
         color: Qt.rgba(0, 0, 0, 0.3)
     }
 
-    x: hostWindow ? (hostWindow.width / 2) - (width / 2) : 0
-    y: hostWindow ? (hostWindow.height - height) : 0
+    x: {
+        if (!hostWindow) {
+            return 0;
+        }
+        if (isFloating) {
+            return __floatingRect.x + adjustOverlay.moveOffset.x;
+        }
+        return (hostWindow.width / 2) - (width / 2);
+    }
+    y: {
+        if (!hostWindow) {
+            return 0;
+        }
+        if (isFloating) {
+            return __floatingRect.y + adjustOverlay.moveOffset.y;
+        }
+        return hostWindow.height - height;
+    }
     width: inputPanel.width > 0 ? inputPanel.width : 100
-    height: inputPanel.height > 0 ? inputPanel.height : 100
+    height: topArea.height + (inputPanel.height > 0 ? inputPanel.height : 100)
+
+    onVisibleChanged: adjusting = false
 
     LanguagePopup {
         id: languagePopup
@@ -76,6 +125,30 @@ Kirigami.ShadowedRectangle {
         z: 2
     }
 
+    // Part of the keyboard above the keys that absorbs taps meant for the keys,
+    // so a slightly-too-high tap doesn't fall through to the window behind
+    Item {
+        id: topArea
+        height: PlasmaKeyboardSettings.panelTopPadding
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            visible: parent.height >= Kirigami.Units.smallSpacing * 3
+            width: Kirigami.Units.gridUnit * 2
+            height: Math.round(Kirigami.Units.smallSpacing / 2) * 2
+            radius: height / 2
+            color: BreezeConstants.keyboardTopSeparatorColor
+        }
+
+        // Swallow taps instead of passing them to the window underneath
+        TapHandler {}
+    }
+
     Rectangle {
         id: topSeparator
         height: 1
@@ -89,15 +162,30 @@ Kirigami.ShadowedRectangle {
         visible: !isFloating && isFullScreenWidth
     }
 
+    Component {
+        id: toolbarComponent
+
+        KeyboardToolbar {
+            keyboardController: root.keyboardController
+            inputMethodConnection: root.inputMethodConnection
+            onAdjustRequested: root.adjusting = true
+            onSettingsRequested: root.showSettingsRequested()
+        }
+    }
+
     Keyboard {
         id: inputPanel
         languagePopup: languagePopup
         virtualKeyboardContext: root.virtualKeyboardContext
+        toolbar: PlasmaKeyboardSettings.toolbarEnabled ? toolbarComponent : null
+        heightScale: root.__heightScale
+        maximumWidth: root.isFloating ? Screen.width * root.__widthFraction : Screen.width
+        fillWidth: root.isFloating || PlasmaKeyboardSettings.panelFillScreenWidth
 
         padding: (!isFloating && isFullScreenWidth) ? Kirigami.Units.smallSpacing / 2 : Kirigami.Units.largeSpacing
 
         anchors {
-            top: parent.top
+            top: topArea.bottom
             left: parent.left
         }
 
@@ -126,5 +214,36 @@ Kirigami.ShadowedRectangle {
         Component.onCompleted: {
             inputPanel.updateKeyboardLayouts();
         }
+    }
+
+    AdjustOverlay {
+        id: adjustOverlay
+        anchors.fill: parent
+        visible: root.adjusting
+        enabled: visible
+        floating: root.isFloating
+        z: 3
+
+        onMoveFinished: (offset) => {
+            const rect = Qt.rect(root.__floatingRect.x + offset.x, root.__floatingRect.y + offset.y, root.width, root.height);
+            const position = PanelGeometry.normalizedPosition(root.__hostSize, rect);
+            PlasmaKeyboardSettings.panelPositionX = position.x;
+            PlasmaKeyboardSettings.panelPositionY = position.y;
+            root.saveSettings();
+        }
+        onResizeFinished: (offset) => {
+            const delta = root.isFloating ? offset.y : -offset.y;
+            PlasmaKeyboardSettings.panelHeightScale = root.clampHeightScale(PlasmaKeyboardSettings.panelHeightScale + delta / root.__baseInputAreaHeight);
+            if (root.isFloating) {
+                PlasmaKeyboardSettings.panelWidthFraction = root.clampWidthFraction(PlasmaKeyboardSettings.panelWidthFraction + offset.x / Screen.width);
+            }
+            root.saveSettings();
+        }
+        onFloatingToggled: {
+            PlasmaKeyboardSettings.panelFloating = !PlasmaKeyboardSettings.panelFloating;
+            root.saveSettings();
+        }
+        onResetRequested: root.hostWindow.resetPanelGeometry()
+        onDoneRequested: root.adjusting = false
     }
 }

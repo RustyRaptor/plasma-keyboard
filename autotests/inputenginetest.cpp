@@ -417,6 +417,87 @@ private Q_SLOTS:
         QVERIFY(!engine.shiftActive());
         QVERIFY(!engine.capsLockActive());
     }
+
+    // Shortcuts and cursor movement
+
+    void sendsShortcutWithModifiers()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+
+        QVERIFY(engine.sendShortcut(Qt::Key_C, {Qt::Key_Control}));
+
+        // Modifiers are held around the key, and released afterwards
+        const QList<QPair<int, bool>> expected = {{Qt::Key_Control, true}, {Qt::Key_C, true}, {Qt::Key_C, false}};
+        QCOMPARE(backend->keyPressedRequests.mid(0, 3), expected);
+        QTRY_VERIFY(engine.pressedKeys().isEmpty());
+        QCOMPARE(backend->keyPressedRequests.last(), qMakePair(int(Qt::Key_Control), false));
+    }
+
+    void shortcutKeepsAlreadyHeldModifiers()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        QVERIFY(engine.sendDirectKey(Qt::Key_Control, true));
+        backend->keyPressedRequests.clear();
+
+        QVERIFY(engine.sendShortcut(Qt::Key_Z, {Qt::Key_Control, Qt::Key_Shift}));
+        QTest::qWait(50);
+
+        // A sticky modifier the user is holding stays held
+        QCOMPARE(engine.pressedKeys(), QList<int>{Qt::Key_Control});
+        QVERIFY(!backend->keyPressedRequests.contains(qMakePair(int(Qt::Key_Control), false)));
+        QVERIFY(backend->keyPressedRequests.contains(qMakePair(int(Qt::Key_Shift), false)));
+    }
+
+    void shortcutFailsWhenBackendRejectsKey()
+    {
+        auto *backend = new TestInputBackend;
+        backend->keyPressedHandled = false;
+        InputEngine engine(backend);
+
+        QVERIFY(!engine.sendShortcut(Qt::Key_C, {Qt::Key_Control}));
+    }
+
+    void movesCursorWithArrowKeys()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+
+        engine.moveCursor(3, 0, false);
+        engine.moveCursor(-1, 0, false);
+        engine.moveCursor(0, -2, false);
+
+        QCOMPARE(backend->keyClickRequests, QList<int>({Qt::Key_Right, Qt::Key_Right, Qt::Key_Right, Qt::Key_Left, Qt::Key_Up, Qt::Key_Up}));
+    }
+
+    void movesCursorWithSelection()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+
+        engine.moveCursor(2, 0, true);
+
+        // Selecting holds shift while moving
+        QCOMPARE(backend->keyPressedRequests.first(), qMakePair(int(Qt::Key_Shift), true));
+        QCOMPARE(backend->keyClickRequests, QList<int>({Qt::Key_Right, Qt::Key_Right}));
+        QTRY_VERIFY(engine.pressedKeys().isEmpty());
+    }
+
+    void movingCursorCommitsPreedit()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new DirectTextComposer);
+        engine.setPreeditText(QStringLiteral("word"));
+        backend->events.clear();
+
+        engine.moveCursor(-1, 0, false);
+
+        // Moving away from a composition keeps the composed text
+        QCOMPARE(backend->events.first(), QStringLiteral("commit:word"));
+        QVERIFY(engine.preeditText().isEmpty());
+    }
 };
 
 QTEST_GUILESS_MAIN(InputEngineTest)

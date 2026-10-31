@@ -32,5 +32,64 @@ ecm_add_test(mockinputmethodcompositor.cpp LINK_LIBRARIES
 qt6_generate_wayland_protocol_server_sources(mockinputmethodcompositor
     FILES
         ${WaylandProtocols_DATADIR}/unstable/input-method/input-method-unstable-v1.xml
+        ${PLASMA_WAYLAND_PROTOCOLS_DIR}/fake-input.xml
         ${Wayland_DATADIR}/wayland.xml
+)
+
+ecm_add_test(steamdeckhapticstest.cpp ${CMAKE_SOURCE_DIR}/src/steamdeckhaptics.cpp
+    TEST_NAME steamdeckhapticstest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Test
+)
+target_include_directories(steamdeckhapticstest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(panelvisibilitytest.cpp ${CMAKE_SOURCE_DIR}/src/panelvisibility.cpp
+    TEST_NAME panelvisibilitytest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Test
+)
+target_include_directories(panelvisibilitytest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(panelgeometrytest.cpp ${CMAKE_SOURCE_DIR}/src/panelgeometry.cpp
+    TEST_NAME panelgeometrytest
+    LINK_LIBRARIES
+        Qt::Gui
+        Qt::Qml
+        Qt::Test
+)
+target_include_directories(panelgeometrytest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(fakeinputtexttest.cpp ${CMAKE_SOURCE_DIR}/src/fakeinputtext.cpp
+    TEST_NAME fakeinputtexttest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Test
+)
+target_include_directories(fakeinputtexttest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(keyboardcontrollertest.cpp
+    TEST_NAME keyboardcontrollertest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Gui
+        Qt::Qml
+        Qt::Test
+)
+
+ecm_add_test(cursordragtrackertest.cpp
+    TEST_NAME cursordragtrackertest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Qml
+        Qt::Test
+)
+
+ecm_add_test(emojimodeltest.cpp
+    TEST_NAME emojimodeltest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Qml
+        Qt::Test
 )
