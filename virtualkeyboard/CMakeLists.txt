@@ -6,6 +6,10 @@ add_library(plasma-keyboard-virtualkeyboard STATIC
     cursordragtracker.h
     emojimodel.cpp
     emojimodel.h
+    gesturedecoder.cpp
+    gesturedecoder.h
+    gesturetypingarea.cpp
+    gesturetypingarea.h
     inputbackend.cpp
     inputbackend.h
     inputengine.cpp

@@ -33,6 +33,11 @@
 
 int main(int argc, char **argv)
 {
+    // Gesture typing needs every touch point of a swipe, not one per frame
+    if (!qEnvironmentVariableIsSet("QML_NO_TOUCH_COMPRESSION")) {
+        qputenv("QML_NO_TOUCH_COMPRESSION", "1");
+    }
+
     QGuiApplication application(argc, argv);
 
     KLocalizedString::setApplicationDomain("plasma-keyboard");

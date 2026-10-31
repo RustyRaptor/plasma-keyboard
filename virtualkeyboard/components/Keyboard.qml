@@ -6,6 +6,9 @@
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
+
+import org.kde.kirigami as Kirigami
 
 import org.kde.plasma.keyboard
 import org.kde.plasma.keyboard.virtualkeyboard
@@ -180,37 +183,69 @@ Item {
             toolbar: root.toolbar
         }
 
-        Loader {
-            id: layoutLoader
+        GestureTypingArea {
+            id: gestureArea
+
+            readonly property int __blockingHints: Qt.ImhSensitiveData | Qt.ImhHiddenText | Qt.ImhUrlCharactersOnly | Qt.ImhEmailCharactersOnly
+                | Qt.ImhDigitsOnly | Qt.ImhFormattedNumbersOnly | Qt.ImhDialableCharactersOnly
 
             Layout.preferredWidth: parent.width
-            Layout.maximumWidth: (item && item.maxWidthToHeightRatio !== -1) ? (item.maxWidthToHeightRatio * height) : parent.width
+            Layout.maximumWidth: (layoutLoader.item && layoutLoader.item.maxWidthToHeightRatio !== -1) ? (layoutLoader.item.maxWidthToHeightRatio * height) : parent.width
             Layout.preferredHeight: root.__keyboardInputAreaHeight
             Layout.alignment: Qt.AlignHCenter
 
-            sourceComponent: {
-                if (!root.layoutDefinition) {
-                    return null;
+            virtualKeyboardContext: root.virtualKeyboardContext
+            swipeEnabled: PlasmaKeyboardSettings.gestureTypingEnabled && root.layoutType === "main"
+                && !(root.inputEngine && (root.inputEngine.inputMethodHints & __blockingHints))
+
+            Loader {
+                id: layoutLoader
+
+                anchors.fill: parent
+
+                sourceComponent: {
+                    if (!root.layoutDefinition) {
+                        return null;
+                    }
+                    return root.layoutDefinition[root.layoutType] ?? root.__builtinLayers[root.layoutType] ?? root.layoutDefinition.main;
                 }
-                return root.layoutDefinition[root.layoutType] ?? root.__builtinLayers[root.layoutType] ?? root.layoutDefinition.main;
+
+                onLoaded: {
+                    resetNavigation();
+                    if (item && item.virtualKeyboardContext !== undefined) {
+                        item.virtualKeyboardContext = root.virtualKeyboardContext;
+                    }
+                    if (item && item.layoutId !== undefined) {
+                        item.layoutId = root.layoutId;
+                    }
+                    if (item && item.packageId !== undefined) {
+                        item.packageId = root.packageId;
+                    }
+                }
+
+                onStatusChanged: {
+                    if (status === Loader.Error) {
+                        console.warn("Failed to load keyboard layout", root.layoutId, root.layoutType);
+                    }
+                }
             }
 
-            onLoaded: {
-                resetNavigation();
-                if (item && item.virtualKeyboardContext !== undefined) {
-                    item.virtualKeyboardContext = root.virtualKeyboardContext;
-                }
-                if (item && item.layoutId !== undefined) {
-                    item.layoutId = root.layoutId;
-                }
-                if (item && item.packageId !== undefined) {
-                    item.packageId = root.packageId;
-                }
-            }
+            // Trail following the finger while swiping
+            Shape {
+                anchors.fill: parent
+                visible: gestureArea.active
+                z: 10
 
-            onStatusChanged: {
-                if (status === Loader.Error) {
-                    console.warn("Failed to load keyboard layout", root.layoutId, root.layoutType);
+                ShapePath {
+                    strokeColor: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.7)
+                    strokeWidth: Math.round(16 * BreezeConstants.scaleHint)
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
+
+                    PathPolyline {
+                        path: gestureArea.trail
+                    }
                 }
             }
         }

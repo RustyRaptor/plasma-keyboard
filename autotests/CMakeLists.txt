@@ -116,3 +116,10 @@ ecm_add_test(suggestioncontrollertest.cpp
         Qt::Qml
         Qt::Test
 )
+
+ecm_add_test(gesturedecodertest.cpp
+    TEST_NAME gesturedecodertest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Test
+)

@@ -589,6 +589,65 @@ private Q_SLOTS:
         backend->reset();
         QVERIFY(engine.recentText().isEmpty());
     }
+
+    // Gesture typing
+
+    void commitsSwipedWordWithSpacing()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+        backend->setActiveState(true);
+
+        // At the start of the text no space is needed
+        engine.commitWord(QStringLiteral("hello"), {QStringLiteral("hello"), QStringLiteral("help")});
+        QCOMPARE(backend->commitRequests.last(), QStringLiteral("hello"));
+
+        // After a word a space separates the swiped word
+        backend->setSurroundingState(QStringLiteral("hello"), 5);
+        engine.commitWord(QStringLiteral("world"), {});
+        QCOMPARE(backend->commitRequests.last(), QStringLiteral(" world"));
+
+        backend->setSurroundingState(QStringLiteral("hello "), 6);
+        engine.commitWord(QStringLiteral("there"), {});
+        QCOMPARE(backend->commitRequests.last(), QStringLiteral("there"));
+    }
+
+    void swipedWordFollowsShiftState()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+        backend->setActiveState(true);
+
+        engine.setShiftActive(true);
+        engine.commitWord(QStringLiteral("hello"), {});
+        QCOMPARE(backend->commitRequests.last(), QStringLiteral("Hello"));
+        // One-shot shift is used up
+        QVERIFY(!engine.shiftActive());
+
+        engine.setCapsLockActive(true);
+        backend->setSurroundingState(QStringLiteral("Hello "), 6);
+        engine.commitWord(QStringLiteral("there"), {});
+        QCOMPARE(backend->commitRequests.last(), QStringLiteral("THERE"));
+    }
+
+    void alternativesReplaceSwipedWord()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+        backend->setActiveState(true);
+        backend->setSurroundingState(QStringLiteral("my"), 2);
+
+        engine.commitWord(QStringLiteral("desk"), {QStringLiteral("desk"), QStringLiteral("deck")});
+
+        // The other candidates are offered, and picking one swaps the swiped word
+        QCOMPARE(engine.candidates(), QStringList({QStringLiteral("deck")}));
+        backend->events.clear();
+        QVERIFY(engine.selectCandidate(0));
+        QCOMPARE(backend->events, QStringList({QStringLiteral("delete:-4:4"), QStringLiteral("commit:deck ")}));
+    }
 };
 
 QTEST_GUILESS_MAIN(InputEngineTest)

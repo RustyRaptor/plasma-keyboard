@@ -104,6 +104,12 @@ public:
     Q_INVOKABLE void setSuggestions(const QStringList &suggestions, int replaceLength);
 
     /**
+     * Commits a whole word (e.g. from gesture typing), separated from the previous word by a
+     * space and following the shift state. The other alternatives are offered to replace it.
+     */
+    Q_INVOKABLE void commitWord(const QString &word, const QStringList &alternatives);
+
+    /**
      * Text typed through the keyboard since the cursor last moved, for clients without surrounding text.
      */
     QString recentText() const;
@@ -155,6 +161,7 @@ private:
     QString m_preeditPrefix;
     QStringList m_candidates;
     bool m_candidatesAreSuggestions = false;
+    bool m_wordAlternativesShown = false;
     int m_suggestionReplaceLength = 0;
     QString m_recentText;
 };

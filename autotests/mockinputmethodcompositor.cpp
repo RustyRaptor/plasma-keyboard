@@ -1248,6 +1248,26 @@ private Q_SLOTS:
         QCOMPARE(commitStringSpy.count(), 0);
     }
 
+    // Verify swiping across letters types the word instead of the letters
+    void testGestureTypingCommitsWord()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+
+        // h, e, l and o on the QWERTY layout
+        swipeInputPanel({keyPosition(1, 0.6), keyPosition(0, 0.25), keyPosition(1, 0.9), keyPosition(0, 0.85)});
+
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QTest::qWait(100);
+        QCOMPARE(commitStringSpy.count(), 1);
+        QCOMPARE(commitStringSpy.first().first().toString().trimmed(), u"hello"_s);
+        saveScreenshot(u"gesture-alternatives"_s);
+
+        // A space ends the word, putting the toolbar back in place of the alternatives
+        tapInputPanel(keyPosition(3, 0.5));
+        QTest::qWait(100);
+    }
+
     // Verify a pinned keyboard stays without an input context and types by emulating keys
     void testPinnedKeyboardTypesWithoutContext()
     {
@@ -1348,6 +1368,36 @@ private:
         }
 
         m_seat->sendTouchPointReleased(surface, touchId, to);
+        m_seat->sendTouchFrameEvent(surface->client());
+        wl_display_flush_clients(m_compositor->display());
+    }
+
+    /**
+     * Helper that swipes a finger through several points on the on-screen keyboard.
+     */
+    void swipeInputPanel(const QList<QPointF> &points, int stepsPerSegment = 8)
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        QVERIFY(surface);
+        QVERIFY(points.size() >= 2);
+
+        constexpr int touchId = 0;
+        m_seat->sendTouchPointPressed(surface, touchId, points.constFirst());
+        m_seat->sendTouchFrameEvent(surface->client());
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(16);
+
+        for (qsizetype segment = 1; segment < points.size(); ++segment) {
+            for (int i = 1; i <= stepsPerSegment; ++i) {
+                const QPointF position = points.at(segment - 1) + (points.at(segment) - points.at(segment - 1)) * (qreal(i) / stepsPerSegment);
+                m_seat->sendTouchPointMoved(surface, touchId, position);
+                m_seat->sendTouchFrameEvent(surface->client());
+                wl_display_flush_clients(m_compositor->display());
+                QTest::qWait(8);
+            }
+        }
+
+        m_seat->sendTouchPointReleased(surface, touchId, points.constLast());
         m_seat->sendTouchFrameEvent(surface->client());
         wl_display_flush_clients(m_compositor->display());
     }

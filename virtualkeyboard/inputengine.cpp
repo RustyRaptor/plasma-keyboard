@@ -12,6 +12,7 @@
 #include <QLocale>
 #include <QTimer>
 
+using namespace Qt::StringLiterals;
 using namespace std::chrono_literals;
 
 static constexpr auto MODIFIER_RELEASE_DELAY = 20ms;
@@ -286,6 +287,7 @@ bool InputEngine::sendDirectKey(int key, bool pressed)
 
 void InputEngine::trackRecentKey(int key)
 {
+    m_wordAlternativesShown = false;
     switch (key) {
     case Qt::Key_Backspace:
         setRecentText(m_recentText.chopped(qMin<qsizetype>(1, m_recentText.size())));
@@ -385,13 +387,52 @@ void InputEngine::releaseKeysLater(const QList<int> &keys)
 void InputEngine::setSuggestions(const QStringList &suggestions, int replaceLength)
 {
     // A composition in progress owns the candidate list
-    if (!m_preeditText.isEmpty() || (!m_candidatesAreSuggestions && !m_candidates.isEmpty())) {
+    if (m_wordAlternativesShown || !m_preeditText.isEmpty() || (!m_candidatesAreSuggestions && !m_candidates.isEmpty())) {
         return;
     }
 
     m_suggestionReplaceLength = replaceLength;
     applyCandidates(suggestions);
     m_candidatesAreSuggestions = !suggestions.isEmpty();
+}
+
+void InputEngine::commitWord(const QString &word, const QStringList &alternatives)
+{
+    if (word.isEmpty()) {
+        return;
+    }
+
+    commit();
+    const QString surrounding = surroundingText();
+    const QString textBeforeCursor = surrounding.isEmpty() ? m_recentText : surrounding.left(cursorPosition());
+    static const QString noSpaceAfter = u"([{\"'¿¡"_s;
+    const bool needsSpace = !textBeforeCursor.isEmpty() && !textBeforeCursor.back().isSpace() && !noSpaceAfter.contains(textBeforeCursor.back());
+
+    const auto applyCase = [this](QString text) {
+        if (m_capsLockActive) {
+            return text.toUpper();
+        }
+        if (uppercase()) {
+            text.front() = text.front().toUpper();
+        }
+        return text;
+    };
+
+    const QString text = applyCase(word);
+    commit(needsSpace ? u' ' + text : text);
+    if (m_shiftActive && !m_capsLockActive) {
+        setShiftActive(false);
+    }
+
+    QStringList others;
+    for (const QString &alternative : alternatives) {
+        if (alternative.compare(word, Qt::CaseInsensitive) != 0) {
+            others.append(applyCase(alternative));
+        }
+    }
+    setSuggestions(others, text.toUtf8().size());
+    // Keep the alternatives until the user types on, instead of regular suggestions for the word
+    m_wordAlternativesShown = !others.isEmpty();
 }
 
 QString InputEngine::recentText() const
@@ -471,6 +512,7 @@ void InputEngine::clear()
 
 bool InputEngine::handleKeyCommit(int key, const QString &text)
 {
+    m_wordAlternativesShown = false;
     switch (key) {
     case Qt::Key_Backspace:
     case Qt::Key_Delete:
@@ -603,6 +645,7 @@ void InputEngine::clearCompositionState(bool updateBackend)
         Q_EMIT preeditPrefixChanged();
     }
     m_candidatesAreSuggestions = false;
+    m_wordAlternativesShown = false;
     if (hadCandidates) {
         m_candidates.clear();
         Q_EMIT candidatesChanged();

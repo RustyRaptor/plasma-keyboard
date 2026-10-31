@@ -115,6 +115,10 @@
             <label>Recently used emoji, most recent first.</label>
             <default></default>
         </entry>
+        <entry key="gestureTypingEnabled" type="Bool">
+            <label>Whether words can be typed by swiping across the letters.</label>
+            <default>true</default>
+        </entry>
         <entry key="suggestionsEnabled" type="Bool">
             <label>Whether word suggestions are shown while typing.</label>
             <default>true</default>
