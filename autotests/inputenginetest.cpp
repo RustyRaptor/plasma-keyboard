@@ -498,6 +498,97 @@ private Q_SLOTS:
         QCOMPARE(backend->events.first(), QStringLiteral("commit:word"));
         QVERIFY(engine.preeditText().isEmpty());
     }
+
+    // Word suggestions
+
+    void showsAndAcceptsSuggestions()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+        QSignalSpy acceptedSpy(&engine, &InputEngine::suggestionAccepted);
+
+        engine.setSuggestions({QStringLiteral("hello"), QStringLiteral("help")}, 3);
+        QCOMPARE(engine.candidates(), QStringList({QStringLiteral("hello"), QStringLiteral("help")}));
+        QVERIFY(engine.wordCandidateListVisibleHint());
+        backend->events.clear();
+
+        // The typed part of the word is replaced, followed by a space
+        QVERIFY(engine.selectCandidate(1));
+
+        QCOMPARE(backend->events, QStringList({QStringLiteral("delete:-3:3"), QStringLiteral("commit:help ")}));
+        QVERIFY(engine.candidates().isEmpty());
+        QCOMPARE(acceptedSpy.count(), 1);
+        QCOMPARE(acceptedSpy.first().first().toString(), QStringLiteral("help"));
+    }
+
+    void suggestionsReplaceUtf8Bytes()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+
+        engine.setSuggestions({QStringLiteral("café")}, QStringLiteral("caf").toUtf8().size() + 2);
+        backend->events.clear();
+        QVERIFY(engine.selectCandidate(0));
+
+        QCOMPARE(backend->events.first(), QStringLiteral("delete:-5:5"));
+    }
+
+    void composerCandidatesWinOverSuggestions()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        auto *composer = new CandidateTextComposer;
+        engine.setTextComposer(composer);
+        engine.setPreeditText(QStringLiteral("ni"));
+        engine.setCandidates({QStringLiteral("你")});
+
+        // A composition in progress owns the candidate list
+        engine.setSuggestions({QStringLiteral("nice")}, 2);
+        QCOMPARE(engine.candidates(), QStringList({QStringLiteral("你")}));
+
+        QVERIFY(engine.selectCandidate(0));
+        QCOMPARE(composer->selectedCandidate, 0);
+    }
+
+    void clearingSuggestionsKeepsComposerCandidates()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+
+        engine.setSuggestions({QStringLiteral("one")}, 0);
+        engine.setSuggestions({}, 0);
+        QVERIFY(engine.candidates().isEmpty());
+
+        engine.setCandidates({QStringLiteral("composer")});
+        engine.setSuggestions({}, 0);
+        QCOMPARE(engine.candidates(), QStringList({QStringLiteral("composer")}));
+    }
+
+    void tracksRecentlyTypedText()
+    {
+        auto *backend = new TestInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new DirectTextComposer);
+
+        engine.sendTextComposerKey(Qt::Key_H, QStringLiteral("h"));
+        engine.sendTextComposerKey(Qt::Key_I, QStringLiteral("i"));
+        engine.sendTextComposerKey(Qt::Key_Space, QString());
+        engine.sendTextComposerKey(Qt::Key_Y, QStringLiteral("y"));
+        engine.sendTextComposerKey(Qt::Key_O, QStringLiteral("o"));
+        engine.sendTextComposerKey(Qt::Key_Backspace, QString());
+        QCOMPARE(engine.recentText(), QStringLiteral("hi y"));
+
+        // Moving the cursor makes the typed text unreliable
+        engine.sendTextComposerKey(Qt::Key_Left, QString());
+        QVERIFY(engine.recentText().isEmpty());
+
+        engine.commit(QStringLiteral("ok"));
+        backend->reset();
+        QVERIFY(engine.recentText().isEmpty());
+    }
 };
 
 QTEST_GUILESS_MAIN(InputEngineTest)

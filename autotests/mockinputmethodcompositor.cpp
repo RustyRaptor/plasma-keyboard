@@ -1264,6 +1264,11 @@ private Q_SLOTS:
         tapInputPanel(keyPosition(0, 0.05));
         QTRY_COMPARE(m_fakeInput->events, QStringList({u"16:1"_s, u"16:0"_s}));
 
+        // Typing shows suggestions over the toolbar, the button at the right edge brings it back
+        saveScreenshot(u"suggestions"_s);
+        tapToolbarButton(-1);
+        saveScreenshot(u"toolbar-over-suggestions"_s);
+
         // Unpinning hides the keyboard again
         tapInputPanel(toolbarButtonPosition(-2));
         QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);

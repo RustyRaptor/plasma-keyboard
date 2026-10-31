@@ -182,6 +182,12 @@ QStringList InputEngine::candidates() const
 
 void InputEngine::setCandidates(const QStringList &candidates)
 {
+    m_candidatesAreSuggestions = false;
+    applyCandidates(candidates);
+}
+
+void InputEngine::applyCandidates(const QStringList &candidates)
+{
     if (m_candidates == candidates) {
         return;
     }
@@ -272,7 +278,42 @@ bool InputEngine::sendTextComposerKey(int key, const QString &text)
 
 bool InputEngine::sendDirectKey(int key, bool pressed)
 {
+    if (pressed) {
+        trackRecentKey(key);
+    }
     return m_backend->sendKeyPressed(key, pressed);
+}
+
+void InputEngine::trackRecentKey(int key)
+{
+    switch (key) {
+    case Qt::Key_Backspace:
+        setRecentText(m_recentText.chopped(qMin<qsizetype>(1, m_recentText.size())));
+        break;
+    case Qt::Key_Space:
+        setRecentText(m_recentText + u' ');
+        break;
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        setRecentText(m_recentText + u'\n');
+        break;
+    case Qt::Key_Tab:
+        setRecentText(m_recentText + u'\t');
+        break;
+    case Qt::Key_Delete:
+    case Qt::Key_Left:
+    case Qt::Key_Right:
+    case Qt::Key_Up:
+    case Qt::Key_Down:
+    case Qt::Key_Home:
+    case Qt::Key_End:
+    case Qt::Key_PageUp:
+    case Qt::Key_PageDown:
+        setRecentText(QString());
+        break;
+    default:
+        break;
+    }
 }
 
 bool InputEngine::isKeyPressed(int key) const
@@ -306,6 +347,7 @@ void InputEngine::moveCursor(int horizontalSteps, int verticalSteps, bool select
     }
 
     commit();
+    setRecentText(QString());
 
     QList<int> pressedModifiers;
     if (select && !m_backend->pressedKeys().contains(Qt::Key_Shift) && m_backend->sendKeyPressed(Qt::Key_Shift, true)) {
@@ -340,8 +382,49 @@ void InputEngine::releaseKeysLater(const QList<int> &keys)
     });
 }
 
+void InputEngine::setSuggestions(const QStringList &suggestions, int replaceLength)
+{
+    // A composition in progress owns the candidate list
+    if (!m_preeditText.isEmpty() || (!m_candidatesAreSuggestions && !m_candidates.isEmpty())) {
+        return;
+    }
+
+    m_suggestionReplaceLength = replaceLength;
+    applyCandidates(suggestions);
+    m_candidatesAreSuggestions = !suggestions.isEmpty();
+}
+
+QString InputEngine::recentText() const
+{
+    return m_recentText;
+}
+
+void InputEngine::setRecentText(const QString &text)
+{
+    // Only the end of the text is useful as context
+    constexpr qsizetype maximumLength = 500;
+    const QString capped = text.size() > maximumLength ? text.right(maximumLength) : text;
+    if (m_recentText == capped) {
+        return;
+    }
+
+    m_recentText = capped;
+    Q_EMIT recentTextChanged();
+}
+
 bool InputEngine::selectCandidate(int index)
 {
+    if (m_candidatesAreSuggestions) {
+        if (index < 0 || index >= m_candidates.size()) {
+            return false;
+        }
+        const QString word = m_candidates.at(index);
+        const int replaceLength = m_suggestionReplaceLength;
+        commit(word + u' ', -replaceLength, replaceLength);
+        Q_EMIT suggestionAccepted(word);
+        return true;
+    }
+
     if (!m_textComposer) {
         return false;
     }
@@ -352,15 +435,25 @@ bool InputEngine::selectCandidate(int index)
 void InputEngine::commit()
 {
     if (!m_preeditText.isEmpty()) {
-        m_backend->commitText(m_preeditText);
+        const QString committed = m_preeditText;
+        m_backend->commitText(committed);
         clearCompositionState(true);
+        setRecentText(m_recentText + committed);
     }
 }
 
 void InputEngine::commit(const QString &text, int replaceFrom, int replaceLength)
 {
+    QString recentText = m_recentText;
     if (replaceLength != 0) {
         m_backend->deleteSurroundingText(replaceFrom, replaceLength);
+
+        // Drop the replaced UTF-8 bytes from the end of the typed text
+        int bytes = replaceLength;
+        while (bytes > 0 && !recentText.isEmpty()) {
+            bytes -= QStringView(recentText).right(1).toUtf8().size();
+            recentText.chop(1);
+        }
     }
 
     if (!text.isEmpty()) {
@@ -368,6 +461,7 @@ void InputEngine::commit(const QString &text, int replaceFrom, int replaceLength
     }
 
     clearCompositionState(true);
+    setRecentText(recentText + text);
 }
 
 void InputEngine::clear()
@@ -391,6 +485,7 @@ bool InputEngine::handleKeyCommit(int key, const QString &text)
     case Qt::Key_Tab:
     case Qt::Key_Space:
         m_backend->sendKeyClick(key);
+        trackRecentKey(key);
         return true;
     default:
         break;
@@ -429,6 +524,7 @@ void InputEngine::connectBackend()
         Q_EMIT uppercaseChanged();
     });
     connect(m_backend, &InputBackend::activeChanged, this, [this] {
+        setRecentText(QString());
         Q_EMIT surroundingTextChanged();
         Q_EMIT selectedTextChanged();
         Q_EMIT anchorPositionChanged();
@@ -437,6 +533,7 @@ void InputEngine::connectBackend()
         resetShiftState();
     });
     connect(m_backend, &InputBackend::resetRequested, this, [this] {
+        setRecentText(QString());
         if (m_textComposer) {
             m_textComposer->reset();
         } else {
@@ -505,6 +602,7 @@ void InputEngine::clearCompositionState(bool updateBackend)
         m_preeditPrefix.clear();
         Q_EMIT preeditPrefixChanged();
     }
+    m_candidatesAreSuggestions = false;
     if (hadCandidates) {
         m_candidates.clear();
         Q_EMIT candidatesChanged();

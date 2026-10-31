@@ -93,3 +93,26 @@ ecm_add_test(emojimodeltest.cpp
         Qt::Qml
         Qt::Test
 )
+
+ecm_add_test(worddictionarytest.cpp
+    TEST_NAME worddictionarytest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Test
+)
+
+ecm_add_test(llmcompletionclienttest.cpp
+    TEST_NAME llmcompletionclienttest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Network
+        Qt::Test
+)
+
+ecm_add_test(suggestioncontrollertest.cpp
+    TEST_NAME suggestioncontrollertest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Qml
+        Qt::Test
+)

@@ -49,6 +49,7 @@ class InputEngine : public QObject
     Q_PROPERTY(bool preeditBubbleVisibleHint READ preeditBubbleVisibleHint NOTIFY textComposerChanged)
     Q_PROPERTY(WordCandidateListModel *wordCandidateListModel READ wordCandidateListModel CONSTANT)
     Q_PROPERTY(bool wordCandidateListVisibleHint READ wordCandidateListVisibleHint NOTIFY wordCandidateListVisibleHintChanged)
+    Q_PROPERTY(QString recentText READ recentText NOTIFY recentTextChanged)
 
 public:
     explicit InputEngine(InputBackend *backend, QObject *parent = nullptr);
@@ -95,6 +96,17 @@ public:
      * Moves the text cursor by sending arrow keys, optionally extending the selection.
      */
     Q_INVOKABLE void moveCursor(int horizontalSteps, int verticalSteps, bool select);
+
+    /**
+     * Shows word suggestions as candidates, unless a composition owns the candidates.
+     * Accepting one replaces replaceLength UTF-8 bytes before the cursor.
+     */
+    Q_INVOKABLE void setSuggestions(const QStringList &suggestions, int replaceLength);
+
+    /**
+     * Text typed through the keyboard since the cursor last moved, for clients without surrounding text.
+     */
+    QString recentText() const;
     Q_INVOKABLE bool selectCandidate(int index);
     Q_INVOKABLE void commit();
     Q_INVOKABLE void commit(const QString &text, int replaceFrom = 0, int replaceLength = 0);
@@ -118,6 +130,8 @@ Q_SIGNALS:
     void inputMethodHintsChanged();
     void pressedKeysChanged();
     void wordCandidateListVisibleHintChanged();
+    void suggestionAccepted(const QString &word);
+    void recentTextChanged();
 
 private:
     void connectBackend();
@@ -126,6 +140,9 @@ private:
     void updateAutomaticShift();
     bool sendDirectKeyClick(int key);
     void releaseKeysLater(const QList<int> &keys);
+    void applyCandidates(const QStringList &candidates);
+    void setRecentText(const QString &text);
+    void trackRecentKey(int key);
     int utf16PositionFromUtf8Offset(uint32_t offset) const;
 
     InputBackend *m_backend = nullptr;
@@ -137,4 +154,7 @@ private:
     QString m_preeditText;
     QString m_preeditPrefix;
     QStringList m_candidates;
+    bool m_candidatesAreSuggestions = false;
+    int m_suggestionReplaceLength = 0;
+    QString m_recentText;
 };

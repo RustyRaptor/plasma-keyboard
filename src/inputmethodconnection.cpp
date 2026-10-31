@@ -12,7 +12,9 @@
 #include "inputmethod_p.h"
 #include "inputmethodhints.h"
 #include "kwinfakeinput.h"
+#include "llmcompletionclient.h"
 #include "plasmakeyboardsettings.h"
+#include "suggestioncontroller.h"
 #include "virtualkeyboardcontext.h"
 #include "vkbdwaylandinputbackend.h"
 
@@ -97,6 +99,14 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
         m_visibility.setHideDelay(PlasmaKeyboardSettings::self()->panelHideDelayMs());
     });
     connect(&m_visibility, &PanelVisibility::visibleChanged, this, &InputMethodConnection::updateWindowVisible);
+
+    auto *settings = PlasmaKeyboardSettings::self();
+    connect(settings, &PlasmaKeyboardSettings::suggestionsEnabledChanged, this, &InputMethodConnection::updateSuggestionSettings);
+    connect(settings, &PlasmaKeyboardSettings::suggestionModelApiChanged, this, &InputMethodConnection::updateSuggestionSettings);
+    connect(settings, &PlasmaKeyboardSettings::suggestionModelEndpointChanged, this, &InputMethodConnection::updateSuggestionSettings);
+    connect(settings, &PlasmaKeyboardSettings::suggestionModelNameChanged, this, &InputMethodConnection::updateSuggestionSettings);
+    connect(settings, &PlasmaKeyboardSettings::suggestionModelApiKeyChanged, this, &InputMethodConnection::updateSuggestionSettings);
+    updateSuggestionSettings();
     connect(&m_visibility, &PanelVisibility::pinnedChanged, this, &InputMethodConnection::pinnedChanged);
     connect(&m_visibility, &PanelVisibility::detachedChanged, this, &InputMethodConnection::detachedChanged);
 
@@ -367,6 +377,39 @@ VirtualKeyboardContext *InputMethodConnection::virtualKeyboardContext() const
 OverlayController *InputMethodConnection::overlayController() const
 {
     return m_overlayController;
+}
+
+void InputMethodConnection::updateSuggestionSettings()
+{
+    auto *settings = PlasmaKeyboardSettings::self();
+    auto *suggestions = m_virtualKeyboardContext->suggestionController();
+    suggestions->setEnabled(settings->suggestionsEnabled());
+
+    using Api = PlasmaKeyboardSettings::EnumSuggestionModelApi;
+    const auto api = settings->suggestionModelApi();
+    if (api == Api::Disabled) {
+        suggestions->setLlmClient(nullptr);
+        return;
+    }
+
+    if (!m_llmClient) {
+        m_llmClient = new LlmCompletionClient(this);
+    }
+    switch (api) {
+    case Api::Ollama:
+        m_llmClient->setApi(LlmCompletionClient::Api::Ollama);
+        break;
+    case Api::OpenAiCompatible:
+        m_llmClient->setApi(LlmCompletionClient::Api::OpenAiCompatible);
+        break;
+    default:
+        m_llmClient->setApi(LlmCompletionClient::Api::LlamaCpp);
+        break;
+    }
+    m_llmClient->setEndpoint(QUrl::fromUserInput(settings->suggestionModelEndpoint()));
+    m_llmClient->setModel(settings->suggestionModelName());
+    m_llmClient->setApiKey(settings->suggestionModelApiKey());
+    suggestions->setLlmClient(m_llmClient);
 }
 
 void InputMethodConnection::updateWindowVisible()

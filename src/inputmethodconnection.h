@@ -18,6 +18,7 @@
 
 class OverlayController;
 class KWinFakeInput;
+class LlmCompletionClient;
 class VirtualKeyboardContext;
 class VkbdWaylandInputBackend;
 
@@ -83,12 +84,14 @@ Q_SIGNALS:
 
 private:
     void updateWindowVisible();
+    void updateSuggestionSettings();
 
     InputPlugin m_input;
     VkbdWaylandInputBackend *m_vkbdInputBackend = nullptr;
     VirtualKeyboardContext *m_virtualKeyboardContext = nullptr;
     KWinFakeInput *m_fakeInput = nullptr;
     OverlayController *m_overlayController = nullptr;
+    LlmCompletionClient *m_llmClient = nullptr;
     PanelVisibility m_visibility;
     QPointer<QWindow> m_window;
     bool m_keyboardNavigationAvailable = false;

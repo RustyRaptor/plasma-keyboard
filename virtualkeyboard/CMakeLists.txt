@@ -20,6 +20,10 @@ add_library(plasma-keyboard-virtualkeyboard STATIC
     textcomposers/directtextcomposer.h
     keyboardcontroller.cpp
     keyboardcontroller.h
+    llmcompletionclient.cpp
+    llmcompletionclient.h
+    suggestioncontroller.cpp
+    suggestioncontroller.h
     keyboardlayoutmetadata.cpp
     keyboardpackageresolver.cpp
     keyboardpackageresolver.h
@@ -29,12 +33,20 @@ add_library(plasma-keyboard-virtualkeyboard STATIC
     virtualkeyboardcontext.h
     wordcandidatelistmodel.cpp
     wordcandidatelistmodel.h
+    worddictionary.cpp
+    worddictionary.h
 )
 
 qt_add_resources(plasma-keyboard-virtualkeyboard "emoji"
     PREFIX "/plasma-keyboard/emoji"
     BASE data
     FILES data/emoji-test.txt
+)
+
+qt_add_resources(plasma-keyboard-virtualkeyboard "words"
+    PREFIX "/plasma-keyboard/words"
+    BASE data
+    FILES data/en_words.txt
 )
 
 target_include_directories(plasma-keyboard-virtualkeyboard
@@ -49,6 +61,7 @@ target_include_directories(plasma-keyboard-virtualkeyboard
 target_link_libraries(plasma-keyboard-virtualkeyboard
     PUBLIC
         Qt::Core
+        Qt::Network
     PRIVATE
         KF6::CoreAddons
         KF6::Package

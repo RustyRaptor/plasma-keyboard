@@ -115,6 +115,32 @@
             <label>Recently used emoji, most recent first.</label>
             <default></default>
         </entry>
+        <entry key="suggestionsEnabled" type="Bool">
+            <label>Whether word suggestions are shown while typing.</label>
+            <default>true</default>
+        </entry>
+        <entry key="suggestionModelApi" type="Enum">
+            <label>Which kind of local language model server to ask for word predictions.</label>
+            <choices>
+                <choice name="Disabled"/>
+                <choice name="LlamaCpp"/>
+                <choice name="Ollama"/>
+                <choice name="OpenAiCompatible"/>
+            </choices>
+            <default>Disabled</default>
+        </entry>
+        <entry key="suggestionModelEndpoint" type="String">
+            <label>Address of the language model server.</label>
+            <default>http://127.0.0.1:8080</default>
+        </entry>
+        <entry key="suggestionModelName" type="String">
+            <label>Model to request from the server (Ollama and OpenAI compatible servers).</label>
+            <default></default>
+        </entry>
+        <entry key="suggestionModelApiKey" type="String">
+            <label>API key sent to the language model server, if it needs one.</label>
+            <default></default>
+        </entry>
         <entry key="diacriticsPopupEnabled" type="Bool">
             <label>Whether holding a physical key shows diacritic options.</label>
             <default>true</default>
