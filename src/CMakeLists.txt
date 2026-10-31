@@ -18,6 +18,8 @@ ecm_add_qtwayland_client_protocol(plasma-keyboard PROTOCOL "${Wayland_DATADIR}/w
 qt6_generate_wayland_protocol_client_sources(plasma-keyboard FILES ${PLASMA_WAYLAND_PROTOCOLS_DIR}/fake-input.xml ${private_code_option})
 
 target_sources(plasma-keyboard PRIVATE
+    audioconversion.cpp
+    audioconversion.h
     fakeinputtext.cpp
     fakeinputtext.h
     feedback.cpp
@@ -45,6 +47,8 @@ target_sources(plasma-keyboard PRIVATE
     panelvisibility.h
     vkbdwaylandinputbackend.cpp
     vkbdwaylandinputbackend.h
+    voiceinput.cpp
+    voiceinput.h
     qwaylandinputpanelshellintegration.cpp
     qwaylandinputpanelshellintegration_p.h
     qwaylandinputpanelsurface.cpp
@@ -142,9 +146,7 @@ target_link_libraries(plasma-keyboard
 
 qt6_import_qml_plugins(plasma-keyboard)
 
-if(PLASMA_KEYBOARD_SOUNDS_ENABLED)
-    target_link_libraries(plasma-keyboard PRIVATE Qt::Multimedia)
-endif()
+target_link_libraries(plasma-keyboard PRIVATE Qt::Multimedia)
 
 install(TARGETS plasma-keyboard ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(PROGRAMS org.kde.plasma.keyboard.desktop DESTINATION ${KDE_INSTALL_APPDIR})

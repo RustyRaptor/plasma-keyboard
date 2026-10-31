@@ -145,6 +145,31 @@
             <label>API key sent to the language model server, if it needs one.</label>
             <default></default>
         </entry>
+        <entry key="voiceInputApi" type="Enum">
+            <label>Which kind of speech recognition server transcribes voice input.</label>
+            <choices>
+                <choice name="Disabled"/>
+                <choice name="WhisperCpp"/>
+                <choice name="OpenAiCompatible"/>
+            </choices>
+            <default>Disabled</default>
+        </entry>
+        <entry key="voiceInputEndpoint" type="String">
+            <label>Address of the speech recognition server.</label>
+            <default>http://127.0.0.1:8081</default>
+        </entry>
+        <entry key="voiceInputModel" type="String">
+            <label>Model to request from an OpenAI compatible speech recognition server.</label>
+            <default></default>
+        </entry>
+        <entry key="voiceInputApiKey" type="String">
+            <label>API key sent to the speech recognition server, if it needs one.</label>
+            <default></default>
+        </entry>
+        <entry key="voiceInputLanguage" type="String">
+            <label>Language spoken, as a code like "en". Empty lets the server detect it.</label>
+            <default></default>
+        </entry>
         <entry key="diacriticsPopupEnabled" type="Bool">
             <label>Whether holding a physical key shows diacritic options.</label>
             <default>true</default>

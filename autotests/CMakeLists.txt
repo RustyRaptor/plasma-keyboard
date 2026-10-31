@@ -123,3 +123,33 @@ ecm_add_test(gesturedecodertest.cpp
         plasma-keyboard-virtualkeyboard
         Qt::Test
 )
+
+ecm_add_test(transcriptionclienttest.cpp
+    TEST_NAME transcriptionclienttest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Network
+        Qt::Test
+)
+
+if(TARGET Qt::Multimedia)
+    ecm_add_test(audioconversiontest.cpp ${CMAKE_SOURCE_DIR}/src/audioconversion.cpp
+        TEST_NAME audioconversiontest
+        LINK_LIBRARIES
+            Qt::Multimedia
+            Qt::Test
+    )
+    target_include_directories(audioconversiontest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+endif()
+
+if(TARGET Qt::Multimedia)
+    ecm_add_test(voiceinputtest.cpp ${CMAKE_SOURCE_DIR}/src/voiceinput.cpp ${CMAKE_SOURCE_DIR}/src/audioconversion.cpp
+        TEST_NAME voiceinputtest
+        LINK_LIBRARIES
+            plasma-keyboard-virtualkeyboard
+            Qt::Multimedia
+            Qt::Qml
+            Qt::Test
+    )
+    target_include_directories(voiceinputtest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+endif()

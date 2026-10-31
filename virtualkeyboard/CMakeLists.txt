@@ -28,6 +28,8 @@ add_library(plasma-keyboard-virtualkeyboard STATIC
     llmcompletionclient.h
     suggestioncontroller.cpp
     suggestioncontroller.h
+    transcriptionclient.cpp
+    transcriptionclient.h
     keyboardlayoutmetadata.cpp
     keyboardpackageresolver.cpp
     keyboardpackageresolver.h

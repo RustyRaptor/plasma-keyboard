@@ -15,8 +15,10 @@
 #include "llmcompletionclient.h"
 #include "plasmakeyboardsettings.h"
 #include "suggestioncontroller.h"
+#include "transcriptionclient.h"
 #include "virtualkeyboardcontext.h"
 #include "vkbdwaylandinputbackend.h"
+#include "voiceinput.h"
 
 #include "overlay/longpresstrigger.h"
 #include "overlay/overlaycontroller.h"
@@ -107,6 +109,21 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
     connect(settings, &PlasmaKeyboardSettings::suggestionModelNameChanged, this, &InputMethodConnection::updateSuggestionSettings);
     connect(settings, &PlasmaKeyboardSettings::suggestionModelApiKeyChanged, this, &InputMethodConnection::updateSuggestionSettings);
     updateSuggestionSettings();
+
+    m_voiceInput = new VoiceInput(m_virtualKeyboardContext->inputEngine(), this);
+    connect(settings, &PlasmaKeyboardSettings::voiceInputApiChanged, this, &InputMethodConnection::updateVoiceInputSettings);
+    connect(settings, &PlasmaKeyboardSettings::voiceInputEndpointChanged, this, &InputMethodConnection::updateVoiceInputSettings);
+    connect(settings, &PlasmaKeyboardSettings::voiceInputModelChanged, this, &InputMethodConnection::updateVoiceInputSettings);
+    connect(settings, &PlasmaKeyboardSettings::voiceInputApiKeyChanged, this, &InputMethodConnection::updateVoiceInputSettings);
+    connect(settings, &PlasmaKeyboardSettings::voiceInputLanguageChanged, this, &InputMethodConnection::updateVoiceInputSettings);
+    updateVoiceInputSettings();
+
+    // Stop listening when the keyboard goes away
+    connect(&m_visibility, &PanelVisibility::visibleChanged, this, [this] {
+        if (!m_visibility.visible() && m_voiceInput->state() == VoiceInput::Recording) {
+            m_voiceInput->cancel();
+        }
+    });
     connect(&m_visibility, &PanelVisibility::pinnedChanged, this, &InputMethodConnection::pinnedChanged);
     connect(&m_visibility, &PanelVisibility::detachedChanged, this, &InputMethodConnection::detachedChanged);
 
@@ -410,6 +427,26 @@ void InputMethodConnection::updateSuggestionSettings()
     m_llmClient->setModel(settings->suggestionModelName());
     m_llmClient->setApiKey(settings->suggestionModelApiKey());
     suggestions->setLlmClient(m_llmClient);
+}
+
+void InputMethodConnection::updateVoiceInputSettings()
+{
+    auto *settings = PlasmaKeyboardSettings::self();
+    using Api = PlasmaKeyboardSettings::EnumVoiceInputApi;
+    const auto api = settings->voiceInputApi();
+
+    auto *client = m_voiceInput->transcriptionClient();
+    client->setApi(api == Api::OpenAiCompatible ? TranscriptionClient::Api::OpenAiCompatible : TranscriptionClient::Api::WhisperCpp);
+    client->setEndpoint(QUrl::fromUserInput(settings->voiceInputEndpoint()));
+    client->setModel(settings->voiceInputModel());
+    client->setApiKey(settings->voiceInputApiKey());
+    client->setLanguage(settings->voiceInputLanguage());
+    m_voiceInput->setAvailable(api != Api::Disabled);
+}
+
+VoiceInput *InputMethodConnection::voiceInput() const
+{
+    return m_voiceInput;
 }
 
 void InputMethodConnection::updateWindowVisible()

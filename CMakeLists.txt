@@ -44,9 +44,8 @@ find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     WaylandClient
 )
 
-if(PLASMA_KEYBOARD_SOUNDS_ENABLED)
-    find_package(Qt6Multimedia ${QT_MIN_VERSION} REQUIRED)
-endif()
+# For voice input, and sound effects
+find_package(Qt6Multimedia ${QT_MIN_VERSION} REQUIRED)
 
 find_package(Qt6GuiPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
 find_package(Qt6WaylandClientPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)

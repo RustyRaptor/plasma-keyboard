@@ -5,9 +5,11 @@
 */
 
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 
 import org.kde.plasma.keyboard
+import org.kde.plasma.keyboard.virtualkeyboard.components
 
 // Toolbar above the keys with layers and keyboard tools, shown while there are no word candidates.
 
@@ -16,12 +18,10 @@ RowLayout {
 
     property var keyboardController: null
     property var inputMethodConnection: null
-    property bool voiceInputAvailable: false
-    property bool voiceInputActive: false
+    readonly property var voiceInput: inputMethodConnection ? inputMethodConnection.voiceInput : null
 
     signal adjustRequested()
     signal settingsRequested()
-    signal voiceInputRequested()
 
     readonly property string currentLayer: keyboardController ? keyboardController.layer : ""
 
@@ -46,10 +46,28 @@ RowLayout {
     }
 
     ToolbarButton {
-        visible: root.voiceInputAvailable
-        iconName: root.voiceInputActive ? "media-record-symbolic" : "audio-input-microphone-symbolic"
-        checked: root.voiceInputActive
-        onClicked: root.voiceInputRequested()
+        visible: !!root.voiceInput && root.voiceInput.available
+        iconName: {
+            if (!root.voiceInput) {
+                return "";
+            }
+            switch (root.voiceInput.state) {
+            case VoiceInput.Recording:
+                return "media-playback-stop-symbolic";
+            case VoiceInput.Transcribing:
+                return "process-working-symbolic";
+            default:
+                return "audio-input-microphone-symbolic";
+            }
+        }
+        checked: !!root.voiceInput && root.voiceInput.state !== VoiceInput.Idle
+        onClicked: root.voiceInput.toggle()
+    }
+
+    QQC2.Label {
+        visible: !!root.voiceInput && root.voiceInput.state === VoiceInput.Recording
+        text: i18n("Listening…")
+        color: BreezeConstants.selectionListTextColor
     }
 
     Item {

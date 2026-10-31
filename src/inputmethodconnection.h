@@ -21,6 +21,7 @@ class KWinFakeInput;
 class LlmCompletionClient;
 class VirtualKeyboardContext;
 class VkbdWaylandInputBackend;
+class VoiceInput;
 
 /**
  * Connects the virtual keyboard UI to the compositor's input method.
@@ -52,6 +53,11 @@ class InputMethodConnection : public QObject
      */
     Q_PROPERTY(bool detached READ detached NOTIFY detachedChanged)
 
+    /**
+     * Speech to text through a speech recognition server.
+     */
+    Q_PROPERTY(VoiceInput *voiceInput READ voiceInput CONSTANT)
+
 public:
     explicit InputMethodConnection(QObject *parent = nullptr);
 
@@ -65,6 +71,7 @@ public:
     bool pinned() const;
     void setPinned(bool pinned);
     bool detached() const;
+    VoiceInput *voiceInput() const;
 
     VirtualKeyboardContext *virtualKeyboardContext() const;
 
@@ -85,6 +92,7 @@ Q_SIGNALS:
 private:
     void updateWindowVisible();
     void updateSuggestionSettings();
+    void updateVoiceInputSettings();
 
     InputPlugin m_input;
     VkbdWaylandInputBackend *m_vkbdInputBackend = nullptr;
@@ -92,6 +100,7 @@ private:
     KWinFakeInput *m_fakeInput = nullptr;
     OverlayController *m_overlayController = nullptr;
     LlmCompletionClient *m_llmClient = nullptr;
+    VoiceInput *m_voiceInput = nullptr;
     PanelVisibility m_visibility;
     QPointer<QWindow> m_window;
     bool m_keyboardNavigationAvailable = false;
