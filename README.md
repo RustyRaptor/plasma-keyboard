@@ -5,6 +5,11 @@
 
 # Plasma Keyboard
 
+> **This is a fork** ([RustyRaptor/plasma-keyboard](https://github.com/RustyRaptor/plasma-keyboard), branch `deck-features`)
+> that adds features aimed at the Steam Deck and other touch devices. See [Fork features](#fork-features) below.
+> Upstream lives at [invent.kde.org/plasma/plasma-keyboard](https://invent.kde.org/plasma/plasma-keyboard).
+
+
 The plasma-keyboard is a virtual keyboard and input engine designed to integrate in Plasma.
 
 It uses the input-method-v1 Wayland protocol to communicate with the compositor to function as an input method. It also can leverage KWin's fake-input protocol in order to emulate keyboard keys (ex. Meta, Ctrl).
@@ -14,6 +19,64 @@ It uses the input-method-v1 Wayland protocol to communicate with the compositor 
 Flatpak manifest: [org.kde.plasma.keyboard.flatpakref](https://cdn.kde.org/flatpak/plasma-keyboard-nightly/org.kde.plasma.keyboard.flatpakref)
 
 See also: [userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps](https://userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps)
+
+## Fork features
+
+| Feature | How to use it | Settings |
+|---|---|---|
+| Padding above the keys | A strip above the keys swallows taps that land slightly too high, so they don't focus the window behind and close the keyboard | *Padding above keys* |
+| Size and position | Toolbar → move button: drag the keyboard (floating mode), resize it with the corner handle, dock/float, reset | *Panel* section |
+| Pin | Toolbar → pin button keeps the keyboard up when the text field goes away. Without a text field it types by emulating keys (US layout) | — |
+| Flicker fix | Hiding waits a moment, so web pages that briefly recreate their text field no longer make the keyboard flash | *Hide delay* |
+| Word suggestions | Shown above the keys while typing; tap one to replace the word. Learns the words you type (new words after two uses) | *Suggestions* |
+| Local language model | Its prediction for the current or next word leads the suggestions. Supports llama.cpp, Ollama and OpenAI compatible servers | *Language model* |
+| Voice typing | Toolbar → microphone, speak, tap again to stop. Transcribed by a whisper.cpp or OpenAI compatible server | *Voice Input* |
+| Editing layer | Toolbar → select-text button: select all, cut, copy, paste, undo/redo, word and line navigation, a selection toggle and a cursor pad | — |
+| Gesture typing | Swipe across the letters of a word without lifting your finger | *Gestures* |
+| Steam Deck haptics | Ticks the trackpads (or rumbles) on key presses, through the controller's hidraw device | *Haptics* |
+| Emoji layer | Toolbar → smiley button. Long press for skin tones, recently used first | — |
+| Spacebar cursor | Swipe sideways on the spacebar to move the cursor; hold shift first to select | *Gestures* |
+| Terminal layer | Toolbar → terminal button: Esc, Tab, sticky Ctrl/Alt, ^C ^D ^Z ^L ^R ^A ^E, arrows, shell symbols | — |
+
+Nothing typed is sent anywhere unless you configure a language model or speech server, and suggestions are
+never computed (or learned) in password, URL, e-mail and number fields.
+
+### Installing the fork on a Steam Deck
+
+The fork builds as a Flatpak (branch `deck`) so SteamOS stays untouched:
+
+```bash
+cd flatpak
+flatpak run org.flatpak.Builder --user --install --force-clean build-dir org.kde.plasma.keyboard.json
+
+# Use it as the input method
+kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod \
+    "$HOME/.local/share/flatpak/exports/share/applications/org.kde.plasma.keyboard.desktop"
+```
+
+To go back to the stock keyboard, set `InputMethod` back to `/usr/share/applications/org.kde.plasma.keyboard.desktop`.
+Settings live in `~/.var/app/org.kde.plasma.keyboard/config/plasmakeyboardrc` and open from the toolbar's settings button.
+
+### Local model servers
+
+Word prediction only needs a small model; it asks for a handful of tokens at temperature 0.
+
+```bash
+# llama.cpp (Language model: llama.cpp server, address http://127.0.0.1:8080)
+llama-server -m qwen2.5-0.5b-q8_0.gguf --port 8080
+
+# Ollama (Language model: Ollama, address http://127.0.0.1:11434, model qwen3:0.6b)
+ollama pull qwen3:0.6b
+
+# whisper.cpp (Speech recognition: whisper.cpp server, address http://127.0.0.1:8081)
+whisper-server -m ggml-base.en.bin --port 8081
+```
+
+### Development
+
+Everything new is covered by unit tests in `autotests/`, and the mock compositor test drives the real
+keyboard end to end (layers, swiping, pinning...). Set `PLASMA_KEYBOARD_SCREENSHOT_DIR` to make it save
+screenshots of what it tests.
 
 #### Repository structure
 
