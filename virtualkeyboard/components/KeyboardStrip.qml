@@ -85,6 +85,7 @@ Rectangle {
     Loader {
         id: toolbarLoader
         anchors.fill: parent
+        anchors.rightMargin: toolbarToggle.width
         active: root.toolbarShown
         sourceComponent: root.toolbar
     }

@@ -1330,7 +1330,35 @@ private Q_SLOTS:
         tapToolbarButton(-1);
         saveScreenshot(u"toolbar-over-suggestions"_s);
 
-        // Unpinning hides the keyboard again
+        // Unpinning hides the keyboard again. The toolbar now ends at the toggle, which is as wide as the strip is high
+        tapInputPanel(toolbarButtonPosition(-2) - QPointF(toolbarStripHeight, 0));
+        QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
+
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
+    // Verify the toolbar brought back over suggestions ends where the toggle at the right edge starts,
+    // instead of hiding its rightmost button (settings) under it
+    void testToolbarOverSuggestionsLeavesRoomForToggle()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        // Typing h shows suggestions, the button at the right edge brings the toolbar back
+        tapInputPanel(keyPosition(1, 0.6));
+        QTest::qWait(500);
+        tapToolbarButton(-1);
+        saveScreenshot(u"toolbar-over-suggestions-toggle"_s);
+
+        // Pin is second from the right, left of the toggle, which is as wide as the strip is high
+        const QPointF pinPosition = toolbarButtonPosition(-2) - QPointF(toolbarStripHeight, 0);
+        tapInputPanel(pinPosition);
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(1000);
+        QVERIFY(inputPanelMapped());
+
+        // Without suggestions the toolbar spans the whole strip again
         tapInputPanel(toolbarButtonPosition(-2));
         QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
 
@@ -1461,11 +1489,12 @@ private:
     {
         const QSize surfaceSize = inputPanelSurfaceSize();
         const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
-        constexpr qreal stripHeight = 31;
-        constexpr qreal buttonWidth = stripHeight * 1.4;
+        constexpr qreal buttonWidth = toolbarStripHeight * 1.4;
         const qreal x = index >= 0 ? buttonWidth * (index + 0.5) : surfaceSize.width() + buttonWidth * (index + 0.5);
-        return QPointF(x, surfaceSize.height() - keyboardHeight - stripHeight / 2 - 2);
+        return QPointF(x, surfaceSize.height() - keyboardHeight - toolbarStripHeight / 2 - 2);
     }
+
+    static constexpr qreal toolbarStripHeight = 31;
 
     /**
      * Taps a toolbar button and waits until the keyboard has rendered the result.
