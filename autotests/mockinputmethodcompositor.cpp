@@ -911,6 +911,29 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
     }
 
+    // Verify the handle bar above a floating keyboard moves it, without adjusting first
+    void testDraggingHandleMovesFloatingKeyboard()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        writeSetting("panelFloating", true);
+        QTest::qWait(500);
+        const QRect before = inputRegionBounds();
+        QVERIFY(before.isValid());
+
+        // The handle bar is the 24 pixel high padding above the keys
+        const QPointF handle(before.center().x(), before.top() + 12);
+        dragInputPanel(handle, handle - QPointF(150, 200), 20);
+
+        QTRY_COMPARE_WITH_TIMEOUT(inputRegionBounds().topLeft(), before.topLeft() - QPoint(150, 200), 2000);
+        KConfig config(QStringLiteral("plasmakeyboardrc"));
+        QVERIFY(config.group(QStringLiteral("General")).readEntry("panelPositionY", 1.0) < 1.0);
+
+        writeSetting("panelPositionX", 0.5);
+        writeSetting("panelPositionY", 1.0);
+        writeSetting("panelFloating", false);
+        QTest::qWait(500);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {

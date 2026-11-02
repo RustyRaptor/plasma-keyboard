@@ -67,6 +67,17 @@ Kirigami.ShadowedRectangle {
         PlasmaKeyboardSettings.save();
     }
 
+    /**
+     * Keeps a floating panel where a drag by the given offset left it.
+     */
+    function finishMove(offset) {
+        const rect = Qt.rect(__floatingRect.x + offset.x, __floatingRect.y + offset.y, width, height);
+        const position = PanelGeometry.normalizedPosition(__hostSize, rect, __topInset);
+        PlasmaKeyboardSettings.panelPositionX = position.x;
+        PlasmaKeyboardSettings.panelPositionY = position.y;
+        saveSettings();
+    }
+
     color: BreezeConstants.keyboardBackgroundColor
 
     corners {
@@ -86,7 +97,7 @@ Kirigami.ShadowedRectangle {
             return 0;
         }
         if (isFloating) {
-            return __floatingRect.x + adjustOverlay.moveOffset.x;
+            return __floatingRect.x + adjustOverlay.moveOffset.x + handleDragHandler.translation.x;
         }
         return (hostWindow.width / 2) - (width / 2);
     }
@@ -95,7 +106,7 @@ Kirigami.ShadowedRectangle {
             return 0;
         }
         if (isFloating) {
-            return __floatingRect.y + adjustOverlay.moveOffset.y;
+            return __floatingRect.y + adjustOverlay.moveOffset.y + handleDragHandler.translation.y;
         }
         return hostWindow.height - height;
     }
@@ -155,6 +166,13 @@ Kirigami.ShadowedRectangle {
 
         // Swallow taps instead of passing them to the window underneath
         TapHandler {}
+
+        // The handle bar moves a floating keyboard
+        PanelDragHandler {
+            id: handleDragHandler
+            enabled: root.isFloating && !root.adjusting
+            onFinished: (offset) => root.finishMove(offset)
+        }
     }
 
     Rectangle {
@@ -236,13 +254,7 @@ Kirigami.ShadowedRectangle {
         floating: root.isFloating
         z: 3
 
-        onMoveFinished: (offset) => {
-            const rect = Qt.rect(root.__floatingRect.x + offset.x, root.__floatingRect.y + offset.y, root.width, root.height);
-            const position = PanelGeometry.normalizedPosition(root.__hostSize, rect, root.__topInset);
-            PlasmaKeyboardSettings.panelPositionX = position.x;
-            PlasmaKeyboardSettings.panelPositionY = position.y;
-            root.saveSettings();
-        }
+        onMoveFinished: (offset) => root.finishMove(offset)
         onResizeFinished: (offset) => {
             const delta = root.isFloating ? offset.y : -offset.y;
             PlasmaKeyboardSettings.panelHeightScale = root.clampHeightScale(PlasmaKeyboardSettings.panelHeightScale + delta / root.__baseInputAreaHeight);

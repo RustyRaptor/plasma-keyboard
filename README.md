@@ -25,7 +25,7 @@ See also: [userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps](https://userbase
 | Feature | How to use it | Settings |
 |---|---|---|
 | Padding around the keys | A strip above the keys swallows taps that land slightly too high, so they don't focus the window behind and close the keyboard. A floating keyboard can also have padding beside the keys, for thumbs holding the device | *Padding above keys*, *Padding beside keys* |
-| Size and position | Toolbar → move button: drag the keyboard (floating mode), resize it with the corner handle, dock/float, reset | *Panel* section |
+| Size and position | Drag the handle bar above the keys to move a floating keyboard. Toolbar → move button: drag the keyboard (floating mode), resize it with the corner handle, dock/float, reset | *Panel* section |
 | Pin | Toolbar → pin button keeps the keyboard up when the text field goes away. Without a text field it types by emulating keys (US layout) | — |
 | Flicker fix | Hiding waits a moment, so web pages that briefly recreate their text field no longer make the keyboard flash | *Hide delay* |
 | Word suggestions | Shown above the keys while typing; tap one to replace the word. Learns the words you type (new words after two uses) | *Suggestions* |

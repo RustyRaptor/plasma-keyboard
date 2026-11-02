@@ -24,29 +24,6 @@ Rectangle {
     readonly property point moveOffset: moveHandler.active ? moveHandler.translation : Qt.point(0, 0)
     readonly property point resizeOffset: resizeHandler.active ? resizeHandler.translation : Qt.point(0, 0)
 
-    // DragHandler that reports how far it was dragged once released.
-    // activeTranslation is already back to zero when active turns false, so the last one is kept.
-    component AdjustDragHandler: DragHandler {
-        id: handler
-
-        property point translation: Qt.point(0, 0)
-
-        signal finished(point offset)
-
-        target: null
-        onActiveTranslationChanged: {
-            if (handler.active) {
-                handler.translation = Qt.point(handler.activeTranslation.x, handler.activeTranslation.y);
-            }
-        }
-        onActiveChanged: {
-            if (!handler.active) {
-                handler.finished(handler.translation);
-                handler.translation = Qt.point(0, 0);
-            }
-        }
-    }
-
     signal moveFinished(point offset)
     signal resizeFinished(point offset)
     signal floatingToggled()
@@ -58,7 +35,7 @@ Rectangle {
     border.width: 2
     border.color: Kirigami.Theme.highlightColor
 
-    AdjustDragHandler {
+    PanelDragHandler {
         id: moveHandler
         enabled: root.floating
         onFinished: (offset) => root.moveFinished(offset)
@@ -115,7 +92,7 @@ Rectangle {
             source: "transform-scale"
         }
 
-        AdjustDragHandler {
+        PanelDragHandler {
             id: resizeHandler
             onFinished: (offset) => root.resizeFinished(offset)
         }
