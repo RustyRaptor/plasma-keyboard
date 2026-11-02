@@ -9,6 +9,7 @@
 #     X,Y              click at page coordinates (the stream is 1280x656 at the top of the page)
 #     X1,Y1-X2,Y2      drag from one point to the other
 #     wait:SECONDS     pause without taking a screenshot
+#     shot             take a screenshot without touching anything (a click on the desktop would unfocus the text field)
 #
 # Basic auth credentials come from the container environment (CUSTOM_USER, PASSWORD).
 import asyncio, base64, json, os, subprocess, sys, urllib.request
@@ -19,6 +20,8 @@ import websockets
 def parse(action):
     if action.startswith('wait:'):
         return ('wait', float(action[5:]))
+    if action == 'shot':
+        return ('shot',)
     if '-' in action:
         start, end = action.split('-')
         return ('drag', tuple(map(int, start.split(','))), tuple(map(int, end.split(','))))
@@ -59,7 +62,9 @@ async def main(actions):
             if action[0] == 'wait':
                 await asyncio.sleep(action[1])
                 continue
-            if action[0] == 'click':
+            if action[0] == 'shot':
+                pass
+            elif action[0] == 'click':
                 x, y = action[1]
                 await mouse('mouseMoved', x, y, 0)
                 await asyncio.sleep(0.2)
@@ -86,10 +91,12 @@ async def main(actions):
 
 actions = [parse(a) for a in sys.argv[1:]]
 url = f"https://{os.environ['CUSTOM_USER']}:{os.environ['PASSWORD']}@127.0.0.1:3001/"
+# Chromium hangs when it sees the desktop session's D-Bus or displays, so it gets none of them
+chrome_env = {k: v for k, v in os.environ.items() if k not in ('DBUS_SESSION_BUS_ADDRESS', 'WAYLAND_DISPLAY', 'DISPLAY', 'XDG_RUNTIME_DIR')}
 chrome = subprocess.Popen(['chromium-browser', '--headless=new', '--no-sandbox', '--ignore-certificate-errors',
                            '--remote-debugging-port=9222', '--remote-allow-origins=*', '--window-size=1280,800',
                            '--enable-unsafe-swiftshader', '--user-data-dir=/tmp/chr-cdp', url],
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=chrome_env)
 try:
     asyncio.run(main(actions))
 finally:
