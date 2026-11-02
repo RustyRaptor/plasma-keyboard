@@ -15,6 +15,7 @@
 #include <QTest>
 
 using namespace Qt::StringLiterals;
+using namespace std::chrono_literals;
 
 Q_LOGGING_CATEGORY(PlasmaKeyboard, "org.kde.plasma.keyboard")
 
@@ -111,9 +112,26 @@ private Q_SLOTS:
         QVERIFY(backend->commits.isEmpty());
 
         // A tap on the microphone isn't worth a request
-        voiceInput.submitRecording(QByteArray(1000, '\0'));
+        voiceInput.submitRecording(QByteArray(1000, '\0'), 100ms);
         QCOMPARE(voiceInput.state(), VoiceInput::Idle);
         QCOMPARE(server.requests.size(), 1);
+        QVERIFY(voiceInput.errorString().isEmpty());
+    }
+
+    void reportsRecordingsWithoutSound()
+    {
+        // A microphone that delivers nothing, unlike a tap, is a problem worth saying
+        FakeHttpServer server;
+        auto *backend = new CommitBackend;
+        InputEngine engine(backend);
+        VoiceInput voiceInput(&engine);
+        configure(voiceInput, server);
+
+        voiceInput.submitRecording(QByteArray(), 1500ms);
+
+        QCOMPARE(voiceInput.state(), VoiceInput::Idle);
+        QVERIFY(!voiceInput.errorString().isEmpty());
+        QVERIFY(server.requests.isEmpty());
     }
 
     void reportsErrors()

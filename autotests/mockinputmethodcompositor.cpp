@@ -1034,6 +1034,32 @@ private Q_SLOTS:
         QCOMPARE(commitStringSpy.last().first().toString(), u"q"_s);
     }
 
+    // Verify voice typing says what went wrong, instead of the microphone button quietly going back to idle
+    void testVoiceInputShowsWhatWentWrong()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        // Nothing listens on the discard port, so transcription fails
+        writeSetting("voiceInputEndpoint", u"http://127.0.0.1:9"_s);
+        writeSetting("voiceInputApi", u"WhisperCpp"_s);
+        QTest::qWait(500);
+
+        // Right of the microphone button, the fourth one, is where the toolbar says what voice typing is doing
+        const QPointF microphone = toolbarButtonPosition(3);
+        const QRect status(int(microphone.x() + toolbarStripHeight), int(microphone.y() - 8), 300, 16);
+        const int idle = darkPixelCount(status);
+
+        tapToolbarButton(3);
+        QTest::qWait(1500);
+        tapToolbarButton(3);
+        QTest::qWait(1500);
+        saveScreenshot(u"voice-input-error"_s);
+        QVERIFY(darkPixelCount(status) > idle + 30);
+
+        writeSetting("voiceInputApi", u"Disabled"_s);
+        writeSetting("voiceInputEndpoint", u"http://127.0.0.1:8081"_s);
+        QTest::qWait(500);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {

@@ -8,6 +8,8 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 
+import org.kde.kirigami as Kirigami
+
 import org.kde.plasma.keyboard
 import org.kde.plasma.keyboard.virtualkeyboard.components
 
@@ -64,10 +66,15 @@ RowLayout {
         onClicked: root.voiceInput.toggle()
     }
 
+    // What voice typing is doing, or why it stopped
     QQC2.Label {
-        visible: !!root.voiceInput && root.voiceInput.state === VoiceInput.Recording
-        text: i18n("Listening…")
-        color: BreezeConstants.selectionListTextColor
+        readonly property bool recording: !!root.voiceInput && root.voiceInput.state === VoiceInput.Recording
+        readonly property string error: root.voiceInput ? root.voiceInput.errorString : ""
+        Layout.maximumWidth: root.width / 3
+        visible: recording || error.length > 0
+        elide: Text.ElideRight
+        text: recording ? i18n("Listening…") : error
+        color: recording ? BreezeConstants.selectionListTextColor : Kirigami.Theme.negativeTextColor
     }
 
     Item {

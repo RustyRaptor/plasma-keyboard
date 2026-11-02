@@ -12,11 +12,15 @@
 
 #include <QAudioDevice>
 #include <QAudioSource>
+#include <QLoggingCategory>
 #include <QMediaDevices>
 
 using namespace std::chrono_literals;
 
+Q_STATIC_LOGGING_CATEGORY(lcVoiceInput, "org.kde.plasma.keyboard.voiceinput", QtWarningMsg)
+
 // Recordings shorter than this are accidental taps on the microphone button
+static constexpr auto MINIMUM_RECORDING_TIME = 250ms;
 static constexpr qsizetype MINIMUM_RECORDING_BYTES = AudioConversion::SPEECH_SAMPLE_RATE * 2 / 4;
 // Whisper works on up to 30 second windows, longer recordings get slow
 static constexpr auto MAXIMUM_RECORDING_TIME = 30s;
@@ -118,10 +122,13 @@ void VoiceInput::cancel()
     setState(Idle);
 }
 
-void VoiceInput::submitRecording(const QByteArray &pcm)
+void VoiceInput::submitRecording(const QByteArray &pcm, std::chrono::milliseconds recordingTime)
 {
     setErrorString(QString());
     if (pcm.size() < MINIMUM_RECORDING_BYTES) {
+        if (recordingTime >= MINIMUM_RECORDING_TIME) {
+            setErrorString(tr("The microphone recorded nothing"));
+        }
         setState(Idle);
         return;
     }
@@ -161,6 +168,7 @@ void VoiceInput::startRecording()
     });
 
     m_limitTimer.start();
+    m_recordingTimer.start();
     setState(Recording);
 }
 
@@ -178,7 +186,7 @@ void VoiceInput::stopRecording()
 
     const QByteArray pcm = AudioConversion::toSpeechPcm(m_audio, m_format);
     m_audio.clear();
-    submitRecording(pcm);
+    submitRecording(pcm, std::chrono::milliseconds(m_recordingTimer.elapsed()));
 }
 
 void VoiceInput::setState(State state)
@@ -198,6 +206,9 @@ void VoiceInput::setErrorString(const QString &error)
     }
 
     m_errorString = error;
+    if (!error.isEmpty()) {
+        qCWarning(lcVoiceInput) << error;
+    }
     Q_EMIT errorStringChanged();
 }
 

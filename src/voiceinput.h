@@ -7,6 +7,7 @@
 #pragma once
 
 #include <QAudioFormat>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
@@ -55,9 +56,12 @@ public:
     Q_INVOKABLE void cancel();
 
     /**
-     * Transcribes 16 kHz, mono, 16 bit audio.
+     * Transcribes 16 kHz, mono, 16 bit audio recorded for the given time.
+     *
+     * Too little audio from a short recording is an accidental tap and is ignored, from a longer one it's reported
+     * as an error.
      */
-    void submitRecording(const QByteArray &pcm);
+    void submitRecording(const QByteArray &pcm, std::chrono::milliseconds recordingTime = std::chrono::milliseconds::zero());
 
 Q_SIGNALS:
     void availableChanged();
@@ -73,6 +77,7 @@ private:
     InputEngine *m_engine = nullptr;
     TranscriptionClient *m_client = nullptr;
     QAudioSource *m_source = nullptr;
+    QElapsedTimer m_recordingTimer;
     QPointer<QIODevice> m_device;
     QAudioFormat m_format;
     QByteArray m_audio;
