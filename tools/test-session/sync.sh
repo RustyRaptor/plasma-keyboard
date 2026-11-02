@@ -16,12 +16,17 @@ set -e
 cd /src
 # Fedora ships an older libplasma than master expects; the API used is the same
 sed -i 's/set(PROJECT_DEP_VERSION "6.7.90")/set(PROJECT_DEP_VERSION "6.7.0")/' CMakeLists.txt
-cmake -S . -B /build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON >/dev/null 2>&1
-ninja -C /build install | tail -1
+cmake -S . -B /build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON >/tmp/pk-build.log 2>&1 || { tail -20 /tmp/pk-build.log; exit 1; }
+# A failed build must stop here, or the tests would run the previous binaries
+if ! ninja -C /build install >/tmp/pk-build.log 2>&1; then
+    grep -E 'error:|FAILED:' /tmp/pk-build.log | head -20
+    exit 1
+fi
 cd tools/test-session
 wayland-scanner client-header /usr/share/plasma-wayland-protocols/fake-input.xml fake-input-client-protocol.h
 wayland-scanner private-code /usr/share/plasma-wayland-protocols/fake-input.xml fake-input-protocol.c
 cc -o /usr/local/bin/touch-inject touch.c fake-input-protocol.c $(pkg-config --cflags --libs wayland-client)
 c++ -std=c++20 -fPIC -o /usr/local/bin/pk-screenshot screenshot.cpp $(pkg-config --cflags --libs Qt6DBus Qt6Gui)
 install -m755 session.sh /usr/local/bin/pk-session
+install -m755 stream-click.py /usr/local/bin/pk-stream-click.py
 SCRIPT
