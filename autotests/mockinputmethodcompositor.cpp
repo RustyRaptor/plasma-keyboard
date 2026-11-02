@@ -1004,6 +1004,36 @@ private Q_SLOTS:
         QTest::qWait(500);
     }
 
+    // Verify a custom layout file replaces the letters, and clearing the setting brings them back
+    void testCustomLayoutReplacesLetters()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        const QString path = m_home.filePath(u"layout.json"_s);
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("{\"rows\": [[{\"chars\": \"zyxwvutsr\"}], [{\"chars\": \"abcde\"}], [\"shift\", \"space\", \"backspace\"], [\"symbols\", \"space\", \"enter\"]]}");
+        file.close();
+
+        writeSetting("customLayoutFile", path);
+        QTest::qWait(800);
+        saveScreenshot(u"custom-layout"_s);
+
+        // A custom layout keeps its keys square, so it may be narrower than the screen but stays centered
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(keyPosition(0, 0.5));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"v"_s);
+        tapInputPanel(keyPosition(1, 0.5));
+        QVERIFY(commitStringSpy.count() == 2 || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"c"_s);
+
+        writeSetting("customLayoutFile", QString());
+        QTest::qWait(800);
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() == 3 || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"q"_s);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {

@@ -27,6 +27,7 @@ See also: [userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps](https://userbase
 | Padding around the keys | A strip above the keys swallows taps that land slightly too high, so they don't focus the window behind and close the keyboard. A floating keyboard can also have padding beside the keys, for thumbs holding the device | *Padding above keys*, *Padding beside keys* |
 | Size and position | Drag the handle bar above the keys to move a floating keyboard. Toolbar → move button: drag the keyboard (floating mode), resize it with the corner handle, dock/float, reset | *Panel* section |
 | Typing preview | A strip above the keys shows the line being typed around the cursor, so a covered text field can still be followed. Never shown for passwords | *Preview* |
+| Custom layout | Your own rows of keys in a JSON file replace the letters: choose which keys exist (Tab, Esc, either Shift, arrows, Enter...) and how wide they are. See below | *Custom layout* |
 | Transparency | Make the keyboard see-through to watch what's underneath while typing | *Transparency*, *Opacity* |
 | Pin | Toolbar → pin button keeps the keyboard up when the text field goes away. Without a text field it types by emulating keys (US layout) | — |
 | Flicker fix | Hiding waits a moment, so web pages that briefly recreate their text field no longer make the keyboard flash | *Hide delay* |
@@ -58,6 +59,33 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod \
 
 To go back to the stock keyboard, set `InputMethod` back to `/usr/share/applications/org.kde.plasma.keyboard.desktop`.
 Settings live in `~/.var/app/org.kde.plasma.keyboard/config/plasmakeyboardrc` and open from the toolbar's settings button.
+
+### Custom layouts
+
+Point *Custom layout* in the settings at a JSON file to replace the letters of the keyboard layout with your
+own rows. The symbol and number layers stay. Changes to the file apply as soon as it's saved.
+
+```json
+{
+    "rows": [
+        ["escape", {"chars": "qwertyuiop"}, {"key": "backspace", "weight": 2}],
+        [{"key": "tab", "weight": 1.5}, {"chars": "asdfghjkl'"}, {"key": "enter", "weight": 1.5}],
+        [{"key": "shift", "weight": 2}, {"chars": "zxcvbnm,.?"}, "shift"],
+        ["symbols", "ctrl", "alt", {"key": "space", "weight": 5}, "arrows", "language", "hide"]
+    ]
+}
+```
+
+| Entry | Keys |
+|---|---|
+| `{"chars": "abc"}` | One key per character. Long press offers accented letters, or your own with `"alternatives": {"a": "aäå"}` |
+| `"name"` or `{"key": "name"}` | `escape`, `tab`, `backspace`, `enter`, `shift`, `space`, `symbols`, `ctrl`, `alt`, `meta`, `left`, `right`, `up`, `down`, `language`, `hide`, and `gap` for empty space |
+| `"arrows"` | Left, up over down, and right, three keys wide |
+| `"weight": 1.5` | Width in normal keys, for any entry except `arrows` |
+
+Keys stay square, so the widest row sets the keyboard's width. [examples/custom-layouts](examples/custom-layouts)
+has a copy of the desktop layout and a minimal one to start from. Mistakes are logged by the keyboard, which keeps
+the normal letters until the file is fixed.
 
 ### Local model servers
 

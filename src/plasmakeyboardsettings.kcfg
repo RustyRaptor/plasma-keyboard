@@ -89,6 +89,10 @@
             <label>Whether the line being typed is shown above the keys.</label>
             <default>false</default>
         </entry>
+        <entry key="customLayoutFile" type="Path">
+            <label>JSON file describing the rows of keys to use instead of the letters of the keyboard layout. Empty for none.</label>
+            <default></default>
+        </entry>
         <entry key="panelFloating" type="Bool">
             <label>Whether the keyboard panel floats at a custom position instead of docking to the bottom.</label>
             <default>false</default>

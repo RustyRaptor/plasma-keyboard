@@ -1,0 +1,8 @@
+{
+    "rows": [
+        ["escape", {"chars": "qwertyuiop", "alternatives": {"q": "q1", "w": "w2", "e": "êe3ëèé", "r": "ŕr4ř", "t": "ţt5ŧť", "y": "ÿy6ýŷ", "u": "űūũûüu7ùú", "i": "îïīĩi8ìí", "o": "œøõôöòóo9", "p": "p0"}}, {"key": "backspace", "weight": 2}],
+        [{"key": "tab", "weight": 1.5}, {"chars": "asdfghjkl'"}, {"key": "enter", "weight": 1.5}],
+        [{"key": "shift", "weight": 2}, {"chars": "zxcvbnm,.?"}, "shift"],
+        ["symbols", "ctrl", "meta", "alt", {"key": "space", "weight": 5}, "arrows", {"key": "language", "weight": 0.5}, {"key": "hide", "weight": 0.5}]
+    ]
+}

@@ -86,6 +86,14 @@ ecm_add_test(cursordragtrackertest.cpp
         Qt::Test
 )
 
+ecm_add_test(customlayouttest.cpp
+    TEST_NAME customlayouttest
+    LINK_LIBRARIES
+        plasma-keyboard-virtualkeyboard
+        Qt::Qml
+        Qt::Test
+)
+
 ecm_add_test(emojimodeltest.cpp
     TEST_NAME emojimodeltest
     LINK_LIBRARIES

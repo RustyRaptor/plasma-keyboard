@@ -8,6 +8,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
+import QtQuick.Dialogs
 
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCM
@@ -199,6 +200,38 @@ KCM.SimpleKCM {
             text: i18n("Show layers and tools above the keys")
             checked: kcm.plasmaKeyboardSettings.toolbarEnabled
             onToggled: kcm.plasmaKeyboardSettings.toolbarEnabled = checked
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Custom layout:")
+
+            QQC2.TextField {
+                id: customLayoutField
+                Layout.fillWidth: true
+                placeholderText: i18n("JSON file with rows of keys, replacing the letters")
+                text: kcm.plasmaKeyboardSettings.customLayoutFile
+                onEditingFinished: kcm.plasmaKeyboardSettings.customLayoutFile = text
+            }
+
+            QQC2.Button {
+                icon.name: "document-open"
+                text: i18n("Browse…")
+                onClicked: customLayoutDialog.open()
+            }
+
+            QQC2.Button {
+                icon.name: "edit-clear"
+                display: QQC2.AbstractButton.IconOnly
+                text: i18n("Use the keyboard layout's letters")
+                enabled: kcm.plasmaKeyboardSettings.customLayoutFile.length > 0
+                onClicked: kcm.plasmaKeyboardSettings.customLayoutFile = ""
+            }
+
+            FileDialog {
+                id: customLayoutDialog
+                nameFilters: [i18n("Keyboard layouts (*.json)")]
+                onAccepted: kcm.plasmaKeyboardSettings.customLayoutFile = decodeURIComponent(selectedFile.toString().replace(/^file:\/\//, ""))
+            }
         }
 
         Kirigami.Separator {

@@ -1,0 +1,8 @@
+{
+    "rows": [
+        [{"chars": "qwertyuiop"}],
+        [{"key": "gap", "weight": 0.5}, {"chars": "asdfghjkl"}, {"key": "gap", "weight": 0.5}],
+        [{"key": "shift", "weight": 1.5}, {"chars": "zxcvbnm"}, {"key": "backspace", "weight": 1.5}],
+        [{"key": "symbols", "weight": 1.5}, {"chars": ","}, {"key": "space", "weight": 5}, {"chars": "."}, {"key": "enter", "weight": 1.5}]
+    ]
+}

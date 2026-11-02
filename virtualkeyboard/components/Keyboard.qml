@@ -55,6 +55,29 @@ Item {
     readonly property string packageId: keyboardPackageResolver ? keyboardPackageResolver.packageId(layoutId) : ""
     readonly property string layoutType: keyboardController ? keyboardController.layoutType : "main"
     readonly property var layoutDefinition: layoutDefinitionLoader.item
+
+    // Letters from the user's own layout file, if any
+    readonly property Component __customMainLayout: {
+        if (customLayout.url.toString().length === 0) {
+            return null;
+        }
+        const component = Qt.createComponent(customLayout.url);
+        if (component.status === Component.Error) {
+            console.warn("Failed to load custom keyboard layout", customLayout.file, component.errorString());
+            return null;
+        }
+        return component;
+    }
+
+    CustomLayout {
+        id: customLayout
+        file: PlasmaKeyboardSettings.customLayoutFile
+        onErrorStringChanged: {
+            if (errorString.length > 0) {
+                console.warn("Custom keyboard layout", file, errorString);
+            }
+        }
+    }
     readonly property var textComposer: (layoutLoader.item && layoutLoader.item.textComposer) || (layoutDefinition ? layoutDefinition.textComposer : null)
 
     implicitHeight: __keyboardHeight
@@ -206,6 +229,9 @@ Item {
                 sourceComponent: {
                     if (!root.layoutDefinition) {
                         return null;
+                    }
+                    if (root.layoutType === "main" && root.__customMainLayout) {
+                        return root.__customMainLayout;
                     }
                     return root.layoutDefinition[root.layoutType] ?? root.__builtinLayers[root.layoutType] ?? root.layoutDefinition.main;
                 }
