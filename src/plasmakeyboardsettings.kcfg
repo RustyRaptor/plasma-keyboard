@@ -85,6 +85,10 @@
             <max>1</max>
             <default>0.6</default>
         </entry>
+        <entry key="typingPreviewEnabled" type="Bool">
+            <label>Whether the line being typed is shown above the keys.</label>
+            <default>false</default>
+        </entry>
         <entry key="panelFloating" type="Bool">
             <label>Whether the keyboard panel floats at a custom position instead of docking to the bottom.</label>
             <default>false</default>

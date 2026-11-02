@@ -209,6 +209,28 @@ public:
         return m_keyboard.get();
     }
 
+    /**
+     * Tells the keyboard about the text around the cursor, as a text field would.
+     */
+    void sendSurroundingText(const QString &text, uint32_t cursor, uint32_t anchor)
+    {
+        const auto resources = resourceMap();
+        for (Resource *resource : resources) {
+            send_surrounding_text(resource->handle, text, cursor, anchor);
+        }
+    }
+
+    /**
+     * Tells the keyboard about the kind of text field, with text-input-v1 hint and purpose values.
+     */
+    void sendContentType(uint32_t hint, uint32_t purpose)
+    {
+        const auto resources = resourceMap();
+        for (Resource *resource : resources) {
+            send_content_type(resource->handle, hint, purpose);
+        }
+    }
+
 Q_SIGNALS:
     void keyboardGrabbed();
     void commitStringChanged(const QString &commitString);
@@ -950,6 +972,38 @@ private Q_SLOTS:
         QTRY_COMPARE_WITH_TIMEOUT(qAlpha(panelImage().pixel(keyPoint)), 255, 3000);
     }
 
+    // Verify the preview above the keys shows the text around the cursor
+    void testTypingPreviewShowsTextAroundCursor()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        const QSize surfaceSize = inputPanelSurfaceSize();
+        const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
+        // A band right above the toolbar strip
+        const QRect band(10, int(surfaceSize.height() - keyboardHeight - toolbarStripHeight - 30), surfaceSize.width() - 20, 24);
+
+        writeSetting("typingPreviewEnabled", true);
+        QTest::qWait(500);
+        const int emptyCount = darkPixelCount(band);
+
+        m_inputMethod->context()->sendSurroundingText(u"Hello world"_s, 5, 5);
+        wl_display_flush_clients(m_compositor->display());
+        QTRY_VERIFY_WITH_TIMEOUT(darkPixelCount(band) > emptyCount + 50, 3000);
+        saveScreenshot(u"typing-preview"_s);
+
+        // Passwords aren't shown: hidden_text | sensitive_data, purpose password
+        m_inputMethod->context()->sendContentType(0x40 | 0x80, 8);
+        m_inputMethod->context()->sendSurroundingText(u"secret"_s, 6, 6);
+        wl_display_flush_clients(m_compositor->display());
+        QTRY_COMPARE_WITH_TIMEOUT(darkPixelCount(band), emptyCount, 3000);
+
+        m_inputMethod->context()->sendContentType(0, 0);
+        m_inputMethod->context()->sendSurroundingText(QString(), 0, 0);
+        wl_display_flush_clients(m_compositor->display());
+
+        writeSetting("typingPreviewEnabled", false);
+        QTest::qWait(500);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {
@@ -1560,6 +1614,24 @@ private:
         if (!image.isNull()) {
             image.save(directory + u'/' + name + u".png"_s);
         }
+    }
+
+    /**
+     * Number of dark (text colored) pixels of the input panel inside a rectangle.
+     */
+    int darkPixelCount(const QRect &rect)
+    {
+        const QImage image = panelImage();
+        int count = 0;
+        for (int y = rect.top(); y <= rect.bottom(); ++y) {
+            for (int x = rect.left(); x <= rect.right(); ++x) {
+                const QRgb pixel = image.pixel(x, y);
+                if (qAlpha(pixel) > 200 && qGray(pixel) < 128) {
+                    ++count;
+                }
+            }
+        }
+        return count;
     }
 
     /**

@@ -160,6 +160,13 @@ KCM.SimpleKCM {
         }
 
         QQC2.CheckBox {
+            Kirigami.FormData.label: i18n("Preview:")
+            text: i18n("Show the line being typed above the keys")
+            checked: kcm.plasmaKeyboardSettings.typingPreviewEnabled
+            onToggled: kcm.plasmaKeyboardSettings.typingPreviewEnabled = checked
+        }
+
+        QQC2.CheckBox {
             Kirigami.FormData.label: i18n("Transparency:")
             text: i18n("See through the keyboard")
             checked: kcm.plasmaKeyboardSettings.panelTransparencyEnabled

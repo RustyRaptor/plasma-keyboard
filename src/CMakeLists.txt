@@ -115,6 +115,7 @@ ecm_target_qml_sources(plasma-keyboard SOURCES
     qml/OverlayWindow.qml
     qml/AdjustOverlay.qml
     qml/PanelDragHandler.qml
+    qml/TypingPreview.qml
     qml/KeyboardToolbar.qml
     qml/ToolbarButton.qml
 )

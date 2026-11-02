@@ -115,7 +115,7 @@ Kirigami.ShadowedRectangle {
         return hostWindow.height - height;
     }
     width: (inputPanel.width > 0 ? inputPanel.width : 100) + sidePadding * 2
-    height: topArea.height + (inputPanel.height > 0 ? inputPanel.height : 100)
+    height: topArea.height + previewArea.height + (inputPanel.height > 0 ? inputPanel.height : 100)
 
     onVisibleChanged: adjusting = false
 
@@ -203,6 +203,31 @@ Kirigami.ShadowedRectangle {
         }
     }
 
+    // Line being typed, above the keys
+    Item {
+        id: previewArea
+        visible: PlasmaKeyboardSettings.typingPreviewEnabled
+        height: visible ? typingPreview.implicitHeight + Kirigami.Units.smallSpacing : 0
+        anchors {
+            top: topArea.bottom
+            left: inputPanel.left
+            right: inputPanel.right
+            leftMargin: inputPanel.padding
+            rightMargin: inputPanel.padding
+        }
+
+        TypingPreview {
+            id: typingPreview
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            height: implicitHeight
+            inputEngine: root.virtualKeyboardContext ? root.virtualKeyboardContext.inputEngine : null
+        }
+    }
+
     Keyboard {
         id: inputPanel
         // Keys under the adjust overlay would otherwise still type when it is tapped
@@ -218,7 +243,7 @@ Kirigami.ShadowedRectangle {
         padding: (!isFloating && isFullScreenWidth) ? Kirigami.Units.smallSpacing / 2 : Kirigami.Units.largeSpacing
 
         anchors {
-            top: topArea.bottom
+            top: previewArea.bottom
             left: parent.left
             leftMargin: root.sidePadding
         }
