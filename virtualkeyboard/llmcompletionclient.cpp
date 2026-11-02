@@ -59,7 +59,11 @@ void LlmCompletionClient::request(const QString &textBeforeCursor)
         request.setRawHeader("Authorization", "Bearer " + m_apiKey.toUtf8());
     }
 
-    const QString prompt = textBeforeCursor.right(MAXIMUM_PROMPT_LENGTH);
+    // Models predict poorly from a prompt ending in a space, since their words start with one
+    QString prompt = textBeforeCursor.right(MAXIMUM_PROMPT_LENGTH);
+    while (prompt.endsWith(u' ') || prompt.endsWith(u'\t')) {
+        prompt.chop(1);
+    }
     QNetworkReply *reply = m_network->post(request, requestBody(m_api, m_model, prompt, MAXIMUM_TOKENS));
     m_reply = reply;
     connect(reply, &QNetworkReply::finished, this, [this, reply, textBeforeCursor] {
@@ -191,6 +195,12 @@ QString LlmCompletionClient::predictedWord(const QString &textBeforeCursor, cons
         // A continuation starting with a space means the model considers the word complete
         const QString rest = leadingWord(continuation);
         return rest.isEmpty() ? QString() : prefix.toString() + rest;
+    }
+
+    // The space typed last isn't in the prompt, so only a continuation starting a new word fits after it
+    const bool endsWithSpace = textBeforeCursor.endsWith(u' ') || textBeforeCursor.endsWith(u'\t');
+    if (endsWithSpace && !continuation.isEmpty() && !continuation.front().isSpace()) {
+        return {};
     }
     return leadingWord(QStringView(continuation).trimmed());
 }

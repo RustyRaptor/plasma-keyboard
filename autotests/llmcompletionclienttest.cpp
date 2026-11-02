@@ -68,12 +68,13 @@ private Q_SLOTS:
 
         // Completing the word being typed
         QTest::newRow("completes word") << u"Hello wor"_s << u"ld, how are you"_s << u"world"_s;
-        // Predicting the next word after a space
-        QTest::newRow("next word") << u"Hello "_s << u"there friend"_s << u"there"_s;
+        // Predicting the next word after a space. The prompt doesn't end with the space, so the word starts with one
+        QTest::newRow("next word") << u"Hello "_s << u" there friend"_s << u"there"_s;
+        QTest::newRow("continuing the word before the space") << u"Hello "_s << u"s and"_s << QString();
         QTest::newRow("next word after leading space") << u"Hello"_s << u" there"_s << QString();
         QTest::newRow("leading space without prefix") << u"How are "_s << u" you"_s << u"you"_s;
         QTest::newRow("apostrophes") << u"I do"_s << u"n't know"_s << u"don't"_s;
-        QTest::newRow("punctuation only") << u"Hello "_s << u"!"_s << QString();
+        QTest::newRow("punctuation only") << u"Hello "_s << u" !"_s << QString();
         QTest::newRow("empty") << u"Hello "_s << QString() << QString();
     }
 
@@ -101,6 +102,24 @@ private Q_SLOTS:
         QCOMPARE(readySpy.first().at(0).toString(), u"We want wor"_s);
         QCOMPARE(readySpy.first().at(1).toString(), u"world"_s);
         QVERIFY(server.requests.first().startsWith("POST /completion "));
+    }
+
+    void leavesTrailingSpaceOutOfThePrompt()
+    {
+        // Models predict poorly from a prompt ending in a space, since their words start with one
+        FakeHttpServer server;
+        server.response = "{\"content\":\" help in advance\"}";
+        LlmCompletionClient client;
+        client.setApi(LlmCompletionClient::Api::LlamaCpp);
+        client.setEndpoint(server.url());
+        QSignalSpy readySpy(&client, &LlmCompletionClient::predictionReady);
+
+        client.request(u"Thanks for your "_s);
+
+        QVERIFY(readySpy.wait());
+        QCOMPARE(readySpy.first().at(0).toString(), u"Thanks for your "_s);
+        QCOMPARE(readySpy.first().at(1).toString(), u"help"_s);
+        QVERIFY2(server.requests.first().contains("\"prompt\":\"Thanks for your\""), server.requests.first().constData());
     }
 
     void sendsApiKey()
