@@ -934,6 +934,22 @@ private Q_SLOTS:
         QTest::qWait(500);
     }
 
+    // Verify the transparency setting lets what's underneath show through the keyboard
+    void testTransparencyMakesKeyboardTranslucent()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        const QPoint keyPoint = keyPosition(0, 0.05).toPoint();
+        QTRY_COMPARE_WITH_TIMEOUT(qAlpha(panelImage().pixel(keyPoint)), 255, 2000);
+
+        writeSetting("panelOpacity", 0.5);
+        writeSetting("panelTransparencyEnabled", true);
+        QTRY_VERIFY_WITH_TIMEOUT(qAbs(qAlpha(panelImage().pixel(keyPoint)) - 128) < 8, 3000);
+        saveScreenshot(u"transparent"_s);
+
+        writeSetting("panelTransparencyEnabled", false);
+        QTRY_COMPARE_WITH_TIMEOUT(qAlpha(panelImage().pixel(keyPoint)), 255, 3000);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {
@@ -1544,6 +1560,22 @@ private:
         if (!image.isNull()) {
             image.save(directory + u'/' + name + u".png"_s);
         }
+    }
+
+    /**
+     * The input panel's latest buffer.
+     */
+    QImage panelImage()
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        if (!surface) {
+            return {};
+        }
+        if (m_panelView.surface() != surface) {
+            m_panelView.setSurface(surface);
+        }
+        m_panelView.advance();
+        return m_panelView.currentBuffer().image();
     }
 
     /**

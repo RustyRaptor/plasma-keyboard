@@ -75,6 +75,16 @@
             <max>300</max>
             <default>0</default>
         </entry>
+        <entry key="panelTransparencyEnabled" type="Bool">
+            <label>Whether the keyboard is partially transparent, to see what is underneath it.</label>
+            <default>false</default>
+        </entry>
+        <entry key="panelOpacity" type="Double">
+            <label>Opacity of the keyboard while transparency is enabled, from 0.2 to 1.</label>
+            <min>0.2</min>
+            <max>1</max>
+            <default>0.6</default>
+        </entry>
         <entry key="panelFloating" type="Bool">
             <label>Whether the keyboard panel floats at a custom position instead of docking to the bottom.</label>
             <default>false</default>

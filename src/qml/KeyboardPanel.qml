@@ -80,6 +80,10 @@ Kirigami.ShadowedRectangle {
 
     color: BreezeConstants.keyboardBackgroundColor
 
+    // A layer fades the keyboard as one image, instead of each key adding to its background's opacity
+    opacity: PlasmaKeyboardSettings.panelTransparencyEnabled ? PlasmaKeyboardSettings.panelOpacity : 1
+    layer.enabled: opacity < 1
+
     corners {
         bottomLeftRadius: isFloating ? Kirigami.Units.cornerRadius : 0
         bottomRightRadius: isFloating ? Kirigami.Units.cornerRadius : 0

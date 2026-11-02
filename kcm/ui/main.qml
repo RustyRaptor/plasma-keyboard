@@ -159,6 +159,23 @@ KCM.SimpleKCM {
             onMoved: kcm.plasmaKeyboardSettings.panelWidthFraction = value
         }
 
+        QQC2.CheckBox {
+            Kirigami.FormData.label: i18n("Transparency:")
+            text: i18n("See through the keyboard")
+            checked: kcm.plasmaKeyboardSettings.panelTransparencyEnabled
+            onToggled: kcm.plasmaKeyboardSettings.panelTransparencyEnabled = checked
+        }
+
+        QQC2.Slider {
+            Kirigami.FormData.label: i18n("Opacity:")
+            enabled: kcm.plasmaKeyboardSettings.panelTransparencyEnabled
+            from: 0.2
+            to: 1
+            stepSize: 0.05
+            value: kcm.plasmaKeyboardSettings.panelOpacity
+            onMoved: kcm.plasmaKeyboardSettings.panelOpacity = value
+        }
+
         QQC2.SpinBox {
             Kirigami.FormData.label: i18n("Hide delay:")
             from: 0
