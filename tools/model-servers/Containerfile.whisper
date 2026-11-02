@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Ziad Arafat <ziadarafat1@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+#
+# whisper.cpp's server, for voice typing. Fedora packages only the library, so it's built here,
+# tuned for the CPU it's built on.
+FROM registry.fedoraproject.org/fedora:44@sha256:9b53c238bb4e9f6221b4820bbdfa61c1bd8273d386dacaaed429a81dd7362085 AS build
+ARG WHISPER_VERSION=v1.9.5
+RUN dnf -y install --setopt=install_weak_deps=False cmake gcc-c++ && dnf clean all
+RUN mkdir /source && curl -fsSL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/${WHISPER_VERSION}.tar.gz | tar xz -C /source --strip-components=1
+RUN cmake -S /source -B /build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=ON -DWHISPER_BUILD_TESTS=OFF -DWHISPER_SDL2=OFF \
+    && cmake --build /build -j"$(nproc)" --target whisper-server
+
+FROM registry.fedoraproject.org/fedora:44@sha256:9b53c238bb4e9f6221b4820bbdfa61c1bd8273d386dacaaed429a81dd7362085
+RUN dnf -y install --setopt=install_weak_deps=False libgomp && dnf clean all
+COPY --from=build /build/bin/whisper-server /usr/local/bin/whisper-server
+ENTRYPOINT ["whisper-server"]

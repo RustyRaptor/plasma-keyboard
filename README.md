@@ -102,6 +102,23 @@ ollama pull qwen3:0.6b
 whisper-server -m ggml-base.en.bin --port 8081
 ```
 
+[tools/model-servers](tools/model-servers) runs both llama.cpp and whisper.cpp as rootless Podman quadlets, built for
+the CPU they run on:
+
+```bash
+mkdir -p ~/models && cd ~/models
+curl -fLO https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q8_0.gguf
+curl -fLO https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+cd path/to/plasma-keyboard/tools/model-servers
+podman build -t localhost/pk-llama -f Containerfile.llama .
+podman build -t localhost/pk-whisper -f Containerfile.whisper .
+cp pk-llama.container pk-whisper.container ~/.config/containers/systemd/
+systemctl --user daemon-reload && systemctl --user start pk-llama pk-whisper
+```
+
+They listen on all addresses (ports 8080 and 8081) without authentication, so keep them on a trusted network.
+On a Ryzen 7 5700G (4 threads each), a suggestion takes about 0.1 seconds and 11 seconds of speech about 0.65 seconds.
+
 ### Development
 
 Everything new is covered by unit tests in `autotests/`, and the mock compositor test drives the real

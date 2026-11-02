@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Ziad Arafat <ziadarafat1@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+#
+# llama.cpp's server, for word suggestions. Built here and tuned for the CPU it's built on:
+# Fedora's package also pulls in about 5 GB of ROCm.
+FROM registry.fedoraproject.org/fedora:44@sha256:9b53c238bb4e9f6221b4820bbdfa61c1bd8273d386dacaaed429a81dd7362085 AS build
+ARG LLAMA_VERSION=v0.8.0
+RUN dnf -y install --setopt=install_weak_deps=False cmake gcc-c++ && dnf clean all
+RUN mkdir /source && curl -fsSL https://github.com/ggml-org/llama.cpp/archive/refs/tags/${LLAMA_VERSION}.tar.gz | tar xz -C /source --strip-components=1
+RUN cmake -S /source -B /build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=ON -DLLAMA_CURL=OFF -DLLAMA_BUILD_TESTS=OFF \
+    && cmake --build /build -j"$(nproc)" --target llama-server
+
+FROM registry.fedoraproject.org/fedora:44@sha256:9b53c238bb4e9f6221b4820bbdfa61c1bd8273d386dacaaed429a81dd7362085
+RUN dnf -y install --setopt=install_weak_deps=False libgomp && dnf clean all
+COPY --from=build /build/bin/llama-server /usr/local/bin/llama-server
+ENTRYPOINT ["llama-server"]

@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Ziad Arafat <ziadarafat1@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+#
+# Voice typing server: ~/.config/containers/systemd/, then systemctl --user daemon-reload && systemctl --user start pk-whisper
+[Unit]
+Description=whisper.cpp server for plasma-keyboard voice typing
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=pk-whisper
+Image=localhost/pk-whisper:latest
+Volume=%h/models:/models:ro
+PublishPort=8081:8081
+Exec=--model /models/ggml-base.en.bin --host 0.0.0.0 --port 8081 --threads 4
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

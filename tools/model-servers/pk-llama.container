@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Ziad Arafat <ziadarafat1@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+#
+# Word suggestion server: ~/.config/containers/systemd/, then systemctl --user daemon-reload && systemctl --user start pk-llama
+[Unit]
+Description=llama.cpp server for plasma-keyboard word suggestions
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=pk-llama
+Image=localhost/pk-llama:latest
+Volume=%h/models:/models:ro
+PublishPort=8080:8080
+Exec=--model /models/qwen2.5-0.5b-instruct-q8_0.gguf --host 0.0.0.0 --port 8080 --ctx-size 2048 --threads 4 --parallel 1
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
