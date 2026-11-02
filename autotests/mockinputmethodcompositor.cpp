@@ -1269,7 +1269,36 @@ private Q_SLOTS:
         QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
         QCOMPARE(commitStringSpy.last().first().toString(), u"😀"_s);
 
-        tapInputPanel(keyPosition(3, 75.0 / 1300));
+        tapInputPanel(keyPosition(3, 75.0 / 1200));
+    }
+
+    // Verify recently used emoji show in a row above the current group, instead of on a page of their own
+    void testEmojiLayerShowsRecentRow()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        writeSetting("recentEmojis", QStringList{u"🏁"_s});
+        QTest::qWait(500);
+
+        tapToolbarButton(0);
+        saveScreenshot(u"emoji-recent-row"_s);
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+
+        // The top row holds the recent emoji
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"🏁"_s);
+
+        // The first group starts right below it
+        tapInputPanel(keyPosition(1, 0.05));
+        QVERIFY(commitStringSpy.count() == 2 || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"😀"_s);
+
+        // Using an emoji moves it to the front of the row
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() == 3 || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"😀"_s);
+
+        tapInputPanel(keyPosition(3, 75.0 / 1200));
     }
 
     // Verify swiping on the spacebar moves the cursor instead of typing a space
