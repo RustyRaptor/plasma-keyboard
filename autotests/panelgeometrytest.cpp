@@ -53,6 +53,20 @@ private Q_SLOTS:
         QCOMPARE(geometry.normalizedPosition(QSizeF(400, 100), QRectF(0, 0, 400, 100)), QPointF(0.5, 0.5));
     }
 
+    void keepsPanelBelowTopInset()
+    {
+        PanelGeometry geometry;
+
+        // The top of the surface can be off screen, so the topmost position starts below the inset
+        QCOMPARE(geometry.placePanel(QSizeF(800, 600), QSizeF(400, 100), QPointF(0, 0), 50), QRectF(0, 50, 400, 100));
+        QCOMPARE(geometry.placePanel(QSizeF(800, 600), QSizeF(400, 100), QPointF(0, 0.5), 50), QRectF(0, 275, 400, 100));
+        QCOMPARE(geometry.placePanel(QSizeF(800, 600), QSizeF(400, 100), QPointF(0, 1), 50), QRectF(0, 500, 400, 100));
+
+        QCOMPARE(geometry.normalizedPosition(QSizeF(800, 600), QRectF(0, 275, 400, 100), 50), QPointF(0, 0.5));
+        // Dragged into the inset is the topmost position
+        QCOMPARE(geometry.normalizedPosition(QSizeF(800, 600), QRectF(0, 10, 400, 100), 50), QPointF(0, 0));
+    }
+
     // Input region
 
     void dockedPanelRegionIsThePanel()

@@ -21,8 +21,31 @@ Rectangle {
     property bool floating: false
 
     // Live adjustments while a drag is in progress
-    readonly property point moveOffset: moveHandler.active ? Qt.point(moveHandler.activeTranslation.x, moveHandler.activeTranslation.y) : Qt.point(0, 0)
-    readonly property point resizeOffset: resizeHandler.active ? Qt.point(resizeHandler.activeTranslation.x, resizeHandler.activeTranslation.y) : Qt.point(0, 0)
+    readonly property point moveOffset: moveHandler.active ? moveHandler.translation : Qt.point(0, 0)
+    readonly property point resizeOffset: resizeHandler.active ? resizeHandler.translation : Qt.point(0, 0)
+
+    // DragHandler that reports how far it was dragged once released.
+    // activeTranslation is already back to zero when active turns false, so the last one is kept.
+    component AdjustDragHandler: DragHandler {
+        id: handler
+
+        property point translation: Qt.point(0, 0)
+
+        signal finished(point offset)
+
+        target: null
+        onActiveTranslationChanged: {
+            if (handler.active) {
+                handler.translation = Qt.point(handler.activeTranslation.x, handler.activeTranslation.y);
+            }
+        }
+        onActiveChanged: {
+            if (!handler.active) {
+                handler.finished(handler.translation);
+                handler.translation = Qt.point(0, 0);
+            }
+        }
+    }
 
     signal moveFinished(point offset)
     signal resizeFinished(point offset)
@@ -35,15 +58,10 @@ Rectangle {
     border.width: 2
     border.color: Kirigami.Theme.highlightColor
 
-    DragHandler {
+    AdjustDragHandler {
         id: moveHandler
-        target: null
         enabled: root.floating
-        onActiveChanged: {
-            if (!active) {
-                root.moveFinished(Qt.point(activeTranslation.x, activeTranslation.y));
-            }
-        }
+        onFinished: (offset) => root.moveFinished(offset)
     }
 
     ColumnLayout {
@@ -97,14 +115,9 @@ Rectangle {
             source: "transform-scale"
         }
 
-        DragHandler {
+        AdjustDragHandler {
             id: resizeHandler
-            target: null
-            onActiveChanged: {
-                if (!active) {
-                    root.resizeFinished(Qt.point(activeTranslation.x, activeTranslation.y));
-                }
-            }
+            onFinished: (offset) => root.resizeFinished(offset)
         }
     }
 }

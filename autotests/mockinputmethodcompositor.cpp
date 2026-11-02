@@ -863,6 +863,54 @@ private Q_SLOTS:
         QTest::qWait(500);
     }
 
+    // Verify dragging a floating keyboard while adjusting moves it, and the new position is kept
+    void testDraggingMovesFloatingKeyboard()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        writeSetting("panelFloating", true);
+        QTest::qWait(500);
+        const QRect before = inputRegionBounds();
+        QVERIFY(before.isValid());
+
+        // Move is the third button from the right, inside the panel's 8 pixel padding and below the 24 pixel top padding
+        const qreal buttonWidth = toolbarStripHeight * 1.4;
+        tapInputPanel(QPointF(before.right() - 8 - buttonWidth * 2.5, before.top() + 24 + 8 + toolbarStripHeight / 2));
+        QTest::qWait(300);
+        const QPointF grab(before.left() + before.width() / 4.0, before.center().y());
+
+        // The keys under the overlay don't type
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(grab);
+        QTest::qWait(300);
+        QCOMPARE(commitStringSpy.count(), 0);
+
+        dragInputPanel(grab, grab - QPointF(150, 200), 20);
+        QTest::qWait(500);
+        saveScreenshot(u"floating-moved"_s);
+
+        QTRY_COMPARE_WITH_TIMEOUT(inputRegionBounds().topLeft(), before.topLeft() - QPoint(150, 200), 2000);
+        KConfig config(QStringLiteral("plasmakeyboardrc"));
+        QVERIFY(config.group(QStringLiteral("General")).hasKey("panelPositionY"));
+
+        // The handle in the corner resizes it
+        const QRect moved = inputRegionBounds();
+        const QPointF grip(moved.right() - 25, moved.bottom() - 25);
+        dragInputPanel(grip, grip - QPointF(128, 0), 20);
+        QTRY_VERIFY_WITH_TIMEOUT(inputRegionBounds().width() < moved.width() - 64, 2000);
+
+        // Hiding ends adjusting, then back to the default place and size
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+        QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
+        writeSetting("panelPositionX", 0.5);
+        writeSetting("panelPositionY", 1.0);
+        writeSetting("panelWidthFraction", 0.6);
+        writeSetting("panelFloating", false);
+        QTest::qWait(500);
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {

@@ -13,21 +13,23 @@ PanelGeometry::PanelGeometry(QObject *parent)
 {
 }
 
-QRectF PanelGeometry::placePanel(const QSizeF &surface, const QSizeF &panel, const QPointF &position) const
+QRectF PanelGeometry::placePanel(const QSizeF &surface, const QSizeF &panel, const QPointF &position, qreal topInset) const
 {
+    const qreal top = std::clamp(topInset, 0.0, qMax(0.0, surface.height() - panel.height()));
     const qreal freeWidth = qMax(0.0, surface.width() - panel.width());
-    const qreal freeHeight = qMax(0.0, surface.height() - panel.height());
+    const qreal freeHeight = qMax(0.0, surface.height() - top - panel.height());
     const qreal x = std::clamp(position.x(), 0.0, 1.0) * freeWidth;
-    const qreal y = std::clamp(position.y(), 0.0, 1.0) * freeHeight;
+    const qreal y = top + std::clamp(position.y(), 0.0, 1.0) * freeHeight;
     return QRectF(QPointF(x, y), panel);
 }
 
-QPointF PanelGeometry::normalizedPosition(const QSizeF &surface, const QRectF &panel) const
+QPointF PanelGeometry::normalizedPosition(const QSizeF &surface, const QRectF &panel, qreal topInset) const
 {
+    const qreal top = std::clamp(topInset, 0.0, qMax(0.0, surface.height() - panel.height()));
     const qreal freeWidth = surface.width() - panel.width();
-    const qreal freeHeight = surface.height() - panel.height();
+    const qreal freeHeight = surface.height() - top - panel.height();
     const qreal x = freeWidth > 0 ? std::clamp(panel.x() / freeWidth, 0.0, 1.0) : 0.5;
-    const qreal y = freeHeight > 0 ? std::clamp(panel.y() / freeHeight, 0.0, 1.0) : 0.5;
+    const qreal y = freeHeight > 0 ? std::clamp((panel.y() - top) / freeHeight, 0.0, 1.0) : 0.5;
     return QPointF(x, y);
 }
 

@@ -28,13 +28,17 @@ public:
     /**
      * Places a panel inside the surface. The position is normalized: (0, 0) is
      * the top left corner and (1, 1) the bottom right one.
+     *
+     * The panel stays at least topInset below the top of the surface. KWin aligns the
+     * bottom of an input panel with the area above a bottom panel (taskbar), which pushes
+     * the top of a full screen surface off screen by the taskbar's height.
      */
-    Q_INVOKABLE QRectF placePanel(const QSizeF &surface, const QSizeF &panel, const QPointF &position) const;
+    Q_INVOKABLE QRectF placePanel(const QSizeF &surface, const QSizeF &panel, const QPointF &position, qreal topInset = 0) const;
 
     /**
      * The normalized position of a panel rect, the inverse of placePanel.
      */
-    Q_INVOKABLE QPointF normalizedPosition(const QSizeF &surface, const QRectF &panel) const;
+    Q_INVOKABLE QPointF normalizedPosition(const QSizeF &surface, const QRectF &panel, qreal topInset = 0) const;
 
     /**
      * The input region for a panel inside the surface.

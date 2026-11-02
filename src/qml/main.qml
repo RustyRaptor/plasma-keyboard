@@ -37,6 +37,7 @@ InputPanelWindow {
             keyboardPanel.keyboardController.symbolMode = false;
             keyboardPanel.keyboardController.layer = "";
         } else {
+            keyboardPanel.adjusting = false;
             if (keyboardPanel.languagePopup) {
                 keyboardPanel.languagePopup.close();
             }

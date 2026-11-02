@@ -50,7 +50,10 @@ Kirigami.ShadowedRectangle {
     readonly property real __widthFraction: clampWidthFraction(PlasmaKeyboardSettings.panelWidthFraction + adjustOverlay.resizeOffset.x / Screen.width)
 
     readonly property size __hostSize: hostWindow ? Qt.size(hostWindow.width, hostWindow.height) : Qt.size(0, 0)
-    readonly property rect __floatingRect: PanelGeometry.placePanel(__hostSize, Qt.size(width, height), Qt.point(PlasmaKeyboardSettings.panelPositionX, PlasmaKeyboardSettings.panelPositionY))
+    // KWin pushes the top of the surface off screen by the height of a bottom taskbar, which the keyboard can't
+    // know, so a floating keyboard keeps clear of the top. Enough for the toolbar to stay reachable over usual taskbars.
+    readonly property real __topInset: Kirigami.Units.gridUnit * 3
+    readonly property rect __floatingRect: PanelGeometry.placePanel(__hostSize, Qt.size(width, height), Qt.point(PlasmaKeyboardSettings.panelPositionX, PlasmaKeyboardSettings.panelPositionY), __topInset)
 
     function clampHeightScale(scale) {
         return Math.max(0.4, Math.min(2, scale));
@@ -180,6 +183,8 @@ Kirigami.ShadowedRectangle {
 
     Keyboard {
         id: inputPanel
+        // Keys under the adjust overlay would otherwise still type when it is tapped
+        enabled: !root.adjusting
         languagePopup: languagePopup
         virtualKeyboardContext: root.virtualKeyboardContext
         toolbar: PlasmaKeyboardSettings.toolbarEnabled ? toolbarComponent : null
@@ -233,7 +238,7 @@ Kirigami.ShadowedRectangle {
 
         onMoveFinished: (offset) => {
             const rect = Qt.rect(root.__floatingRect.x + offset.x, root.__floatingRect.y + offset.y, root.width, root.height);
-            const position = PanelGeometry.normalizedPosition(root.__hostSize, rect);
+            const position = PanelGeometry.normalizedPosition(root.__hostSize, rect, root.__topInset);
             PlasmaKeyboardSettings.panelPositionX = position.x;
             PlasmaKeyboardSettings.panelPositionY = position.y;
             root.saveSettings();
