@@ -831,6 +831,38 @@ private Q_SLOTS:
         QVERIFY(!surface->inputRegionContains(QPoint(surfaceSize.width() / 2, surfaceSize.height() - keyboardHeight - 200)));
     }
 
+    // Verify a floating keyboard's side padding pushes the keys inwards and keeps taps on it from typing
+    void testFloatingSidePaddingAbsorbsTaps()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        constexpr int sidePadding = 60;
+        writeSetting("panelFloating", true);
+        writeSetting("panelSidePadding", sidePadding);
+        QTest::qWait(500);
+        saveScreenshot(u"floating-side-padding"_s);
+
+        const QRect panel = inputRegionBounds();
+        QVERIFY(panel.isValid());
+        QVERIFY(panel.left() > 0);
+
+        // Below the top padding and the toolbar strip, the first of four rows of keys
+        const qreal keysTop = panel.top() + 24 + toolbarStripHeight;
+        const qreal firstRowY = keysTop + (panel.bottom() - keysTop) / 8;
+
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(QPointF(panel.left() + sidePadding * 2.0 / 3, firstRowY));
+        QTest::qWait(300);
+        QCOMPARE(commitStringSpy.count(), 0);
+
+        tapInputPanel(QPointF(panel.left() + sidePadding + 30, firstRowY));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"q"_s);
+
+        writeSetting("panelSidePadding", 0);
+        writeSetting("panelFloating", false);
+        QTest::qWait(500);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {
@@ -1524,6 +1556,25 @@ private:
     }
 
     static constexpr qreal toolbarStripHeight = 31;
+
+    /**
+     * Bounding rectangle of the keyboard in the input panel's input region.
+     */
+    QRect inputRegionBounds() const
+    {
+        auto *surface = m_inputPanel->toplevelSurface();
+        const QSize size = inputPanelSurfaceSize();
+        QRect bounds;
+        // The bottom row only holds the anchor pixels that stop KWin from centering the region
+        for (int y = 0; y < size.height() - 1; y += 2) {
+            for (int x = 0; x < size.width(); x += 2) {
+                if (surface->inputRegionContains(QPoint(x, y))) {
+                    bounds |= QRect(x, y, 1, 1);
+                }
+            }
+        }
+        return bounds;
+    }
 
     /**
      * Taps a toolbar button and waits until the keyboard has rendered the result.

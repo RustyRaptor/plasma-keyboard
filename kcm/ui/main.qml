@@ -128,6 +128,18 @@ KCM.SimpleKCM {
             onToggled: kcm.plasmaKeyboardSettings.panelFloating = checked
         }
 
+        QQC2.SpinBox {
+            Kirigami.FormData.label: i18n("Padding beside keys:")
+            enabled: kcm.plasmaKeyboardSettings.panelFloating
+            from: 0
+            to: 300
+            stepSize: 4
+            value: kcm.plasmaKeyboardSettings.panelSidePadding
+            textFromValue: (value) => i18np("%1 pixel", "%1 pixels", value)
+            valueFromText: (text) => parseInt(text) || 0
+            onValueModified: kcm.plasmaKeyboardSettings.panelSidePadding = value
+        }
+
         QQC2.Slider {
             Kirigami.FormData.label: i18n("Height:")
             from: 0.4

@@ -29,6 +29,11 @@ Kirigami.ShadowedRectangle {
     readonly property bool isFullScreenWidth: !isFloating && PlasmaKeyboardSettings.panelFillScreenWidth
 
     /**
+     * Width of the areas beside the keys that absorb stray taps, such as from thumbs holding the device.
+     */
+    readonly property int sidePadding: isFloating ? PlasmaKeyboardSettings.panelSidePadding : 0
+
+    /**
      * Whether the move and resize handles are shown.
      */
     property bool adjusting: false
@@ -91,7 +96,7 @@ Kirigami.ShadowedRectangle {
         }
         return hostWindow.height - height;
     }
-    width: inputPanel.width > 0 ? inputPanel.width : 100
+    width: (inputPanel.width > 0 ? inputPanel.width : 100) + sidePadding * 2
     height: topArea.height + (inputPanel.height > 0 ? inputPanel.height : 100)
 
     onVisibleChanged: adjusting = false
@@ -179,7 +184,8 @@ Kirigami.ShadowedRectangle {
         virtualKeyboardContext: root.virtualKeyboardContext
         toolbar: PlasmaKeyboardSettings.toolbarEnabled ? toolbarComponent : null
         heightScale: root.__heightScale
-        maximumWidth: root.isFloating ? Screen.width * root.__widthFraction : Screen.width
+        // The side padding comes out of the floating width, so the keyboard keeps its size
+        maximumWidth: root.isFloating ? Math.max(Screen.width * root.__widthFraction - root.sidePadding * 2, 100) : Screen.width
         fillWidth: root.isFloating || PlasmaKeyboardSettings.panelFillScreenWidth
 
         padding: (!isFloating && isFullScreenWidth) ? Kirigami.Units.smallSpacing / 2 : Kirigami.Units.largeSpacing
@@ -187,6 +193,7 @@ Kirigami.ShadowedRectangle {
         anchors {
             top: topArea.bottom
             left: parent.left
+            leftMargin: root.sidePadding
         }
 
         function updateKeyboardLayouts() {

@@ -69,6 +69,12 @@
             <max>200</max>
             <default>24</default>
         </entry>
+        <entry key="panelSidePadding" type="Int">
+            <label>Width of the areas beside the keys of a floating keyboard that absorb stray taps, in pixels.</label>
+            <min>0</min>
+            <max>300</max>
+            <default>0</default>
+        </entry>
         <entry key="panelFloating" type="Bool">
             <label>Whether the keyboard panel floats at a custom position instead of docking to the bottom.</label>
             <default>false</default>
