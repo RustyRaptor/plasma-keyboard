@@ -20,6 +20,10 @@ qt6_generate_wayland_protocol_client_sources(plasma-keyboard FILES ${PLASMA_WAYL
 target_sources(plasma-keyboard PRIVATE
     audioconversion.cpp
     audioconversion.h
+    configfilewatcher.cpp
+    configfilewatcher.h
+    emittedkeys.cpp
+    emittedkeys.h
     fakeinputtext.cpp
     fakeinputtext.h
     feedback.cpp

@@ -133,6 +133,12 @@ KWinFakeInput::KWinFakeInput(VkbdWaylandInputBackend *backend, QObject *parent)
     : QObject(parent)
     , m_backend(backend)
 {
+    m_clock.start();
+}
+
+bool KWinFakeInput::isEcho(quint32 linuxKey, bool pressed)
+{
+    return m_emittedKeys.takeEcho(linuxKey, pressed, m_clock.elapsed());
 }
 
 bool KWinFakeInput::shouldUseFakeInput(int key) const
@@ -238,5 +244,7 @@ void KWinFakeInput::sendFakeKeyboardKey(int key, bool pressed)
         return;
     }
 
-    static_cast<FakeInput *>(m_fakeInput)->keyboard_key(QT_KEY_TO_LINUX.value(key), pressed);
+    const quint32 linuxKey = QT_KEY_TO_LINUX.value(key);
+    m_emittedKeys.note(linuxKey, pressed, m_clock.elapsed());
+    static_cast<FakeInput *>(m_fakeInput)->keyboard_key(linuxKey, pressed);
 }

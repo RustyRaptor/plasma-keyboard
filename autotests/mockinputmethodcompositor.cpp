@@ -627,6 +627,14 @@ private Q_SLOTS:
         m_fakeInput = std::make_unique<FakeInputV1>(m_compositor.get());
         m_fakeInput->initialize();
 
+        // Like KWin, emulated keys go through the input method's keyboard grab
+        connect(m_fakeInput.get(), &FakeInputV1::keyboardKey, this, [this](uint32_t key, uint32_t state) {
+            if (m_inputMethod->context() && m_inputMethod->context()->keyboard()) {
+                m_inputMethod->context()->keyboard()->sendKey(key, state);
+                wl_display_flush_clients(m_compositor->display());
+            }
+        });
+
         // Track the panel's buffers so screenshots can be taken
         connect(m_inputPanel.get(), &InputPanelV1::toplevelPanelRequested, this, [this] {
             m_panelView.setSurface(m_inputPanel->toplevelSurface());
@@ -821,6 +829,23 @@ private Q_SLOTS:
 
         // Well above the keyboard input goes to other windows
         QVERIFY(!surface->inputRegionContains(QPoint(surfaceSize.width() / 2, surfaceSize.height() - keyboardHeight - 200)));
+    }
+
+    // Verify settings changed by other processes (e.g. the settings module) apply right away
+    void testAppliesChangedSettings()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        auto *surface = m_inputPanel->toplevelSurface();
+        const QSize surfaceSize = inputPanelSurfaceSize();
+        const qreal keyboardHeight = std::max(surfaceSize.height() * 0.3, 150.0);
+        const QPoint highPoint(surfaceSize.width() / 2, surfaceSize.height() - keyboardHeight - 31 - 80);
+        QVERIFY(!surface->inputRegionContains(highPoint));
+
+        writeSetting("panelTopPadding", 100);
+        QTRY_VERIFY_WITH_TIMEOUT(surface->inputRegionContains(highPoint), 3000);
+
+        writeSetting("panelTopPadding", 24);
+        QTRY_VERIFY_WITH_TIMEOUT(!surface->inputRegionContains(highPoint), 3000);
     }
 
     // Verify navigation consumes its keys and Escape restores forwarding
@@ -1200,6 +1225,22 @@ private Q_SLOTS:
         QCOMPARE(commitStringSpy.last().first().toString(), u"q"_s);
     }
 
+    // Verify arrow keys from the keyboard move the text cursor, instead of being taken by keyboard navigation
+    void testEmittedArrowKeysReachTheClient()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        QSignalSpy keySpy(m_inputMethod->context(), &InputMethodContext::keyReceived);
+
+        tapToolbarButton(1);
+        // Right arrow is the third key of the third row of the editing layer
+        tapInputPanel(keyPosition(2, 2.5 / 6));
+
+        QTRY_VERIFY_WITH_TIMEOUT(keySpy.count() >= 2, 2000);
+        QCOMPARE(keySpy.at(0).at(0).toUInt(), uint32_t(KEY_RIGHT));
+
+        tapInputPanel(keyPosition(3, 50.0 / 600));
+    }
+
     // Verify the terminal layer sends control sequences
     void testTerminalLayerSendsControlC()
     {
@@ -1437,6 +1478,17 @@ private:
         tapInputPanel(toolbarButtonPosition(index));
         QVERIFY(damageSpy.count() || damageSpy.wait());
         QTest::qWait(RUNNING_IN_CI ? 300 : 100);
+    }
+
+    /**
+     * Changes a setting the way another process would, by writing the config file.
+     */
+    void writeSetting(const char *key, const QVariant &value)
+    {
+        KConfig config(QStringLiteral("plasmakeyboardrc"));
+        KConfigGroup group(&config, QStringLiteral("General"));
+        group.writeEntry(key, value);
+        config.sync();
     }
 
     void reactivateInputMethod()

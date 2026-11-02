@@ -153,3 +153,19 @@ if(TARGET Qt::Multimedia)
     )
     target_include_directories(voiceinputtest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 endif()
+
+ecm_add_test(configfilewatchertest.cpp ${CMAKE_SOURCE_DIR}/src/configfilewatcher.cpp
+    TEST_NAME configfilewatchertest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Test
+)
+target_include_directories(configfilewatchertest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(emittedkeystest.cpp ${CMAKE_SOURCE_DIR}/src/emittedkeys.cpp
+    TEST_NAME emittedkeystest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Test
+)
+target_include_directories(emittedkeystest PRIVATE ${CMAKE_SOURCE_DIR}/src)

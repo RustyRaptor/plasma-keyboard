@@ -6,6 +6,7 @@
 */
 
 #include "config-plasma-keyboard.h"
+#include "configfilewatcher.h"
 #include "inputpanelintegration.h"
 #include "logging.h"
 #include "plasmakeyboardsettings.h"
@@ -21,6 +22,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QWindow>
 #include <qpa/qwindowsysteminterface.h>
 
@@ -75,16 +77,17 @@ int main(int argc, char **argv)
     }
 
     // Listen to config updates from kcm, and reparse
+    const auto reloadSettings = [] {
+        PlasmaKeyboardSettings::self()->sharedConfig()->reparseConfiguration();
+        PlasmaKeyboardSettings::self()->load();
+    };
     auto watcher = KConfigWatcher::create(PlasmaKeyboardSettings::self()->sharedConfig());
-    // clang-format off
-    QObject::connect(watcher.get(),
-        &KConfigWatcher::configChanged,
-        &application,
-        [](const KConfigGroup &, const QByteArrayList &) {
-            PlasmaKeyboardSettings::self()->sharedConfig()->reparseConfiguration();
-            PlasmaKeyboardSettings::self()->load();
-        });
-    // clang-format on
+    QObject::connect(watcher.get(), &KConfigWatcher::configChanged, &application, reloadSettings);
+
+    // Change notifications are D-Bus signals that don't reach a Flatpak sandbox, so watch the file too
+    const QString configPath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' + PlasmaKeyboardSettings::self()->config()->name();
+    auto *fileWatcher = new ConfigFileWatcher(configPath, &application);
+    QObject::connect(fileWatcher, &ConfigFileWatcher::changed, &application, reloadSettings);
 
     QQmlApplicationEngine view;
     KLocalization::setupLocalizedContext(&view);

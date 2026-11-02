@@ -6,6 +6,9 @@
 
 #pragma once
 
+#include "emittedkeys.h"
+
+#include <QElapsedTimer>
 #include <QObject>
 
 class VkbdWaylandInputBackend;
@@ -33,6 +36,11 @@ public:
      */
     bool sendText(const QString &text);
 
+    /**
+     * Whether a key event from the keyboard grab is one this class emulated, by Linux key code.
+     */
+    bool isEcho(quint32 linuxKey, bool pressed);
+
 private:
     bool ensureInitialized();
     bool isModifier(int key) const;
@@ -41,4 +49,6 @@ private:
 
     QObject *m_fakeInput = nullptr;
     VkbdWaylandInputBackend *m_backend = nullptr;
+    EmittedKeys m_emittedKeys;
+    QElapsedTimer m_clock;
 };

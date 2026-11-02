@@ -174,6 +174,11 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
     });
 
     connect(&m_input, &InputPlugin::keyPressed, this, [this](QKeyEvent *keyEvent) {
+        // Keys the keyboard emulated itself go to the client untouched
+        if (m_fakeInput->isEcho(keyEvent->nativeScanCode(), true)) {
+            return;
+        }
+
         if (m_overlayController && m_overlayController->processKeyPress(keyEvent)) {
             keyEvent->accept();
             return;
@@ -202,6 +207,10 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
     });
 
     connect(&m_input, &InputPlugin::keyReleased, this, [this](QKeyEvent *keyEvent) {
+        if (m_fakeInput->isEcho(keyEvent->nativeScanCode(), false)) {
+            return;
+        }
+
         if (m_overlayController && m_overlayController->processKeyRelease(keyEvent)) {
             keyEvent->accept();
             return;
