@@ -24,6 +24,11 @@ Rectangle {
      * Shown instead of the candidates while there are none, or when the user switches to it.
      */
     property Component toolbar: null
+
+    /**
+     * Buttons shown beside the candidates, left of the switch to the toolbar.
+     */
+    property Component candidateActions: null
     property bool __toolbarRequested: false
     readonly property bool toolbarShown: toolbar !== null && (!hasCandidates || __toolbarRequested)
     readonly property real candidateHorizontalPadding: Math.round(28 * BreezeConstants.scaleHint)
@@ -40,6 +45,12 @@ Rectangle {
     }
 
     onHasCandidatesChanged: __toolbarRequested = false
+
+    function showToolbar() {
+        if (toolbar !== null && hasCandidates) {
+            __toolbarRequested = true;
+        }
+    }
 
 
     function ensureNavigationSelection(fromRight) {
@@ -115,11 +126,21 @@ Rectangle {
         }
     }
 
+    Loader {
+        id: candidateActionsLoader
+        active: root.candidateActions !== null && !root.toolbarShown && root.hasCandidates
+        visible: active
+        height: parent.height
+        anchors.right: toolbarToggle.left
+        sourceComponent: root.candidateActions
+        z: 2
+    }
+
     ListView {
         id: candidateView
         visible: !root.toolbarShown
         anchors.fill: parent
-        anchors.rightMargin: toolbarToggle.width
+        anchors.rightMargin: toolbarToggle.width + (candidateActionsLoader.item ? candidateActionsLoader.width : 0)
         orientation: ListView.Horizontal
         spacing: 0
         clip: true

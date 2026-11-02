@@ -47,23 +47,8 @@ RowLayout {
         onClicked: root.keyboardController.toggleLayer("terminal")
     }
 
-    ToolbarButton {
-        visible: !!root.voiceInput && root.voiceInput.available
-        iconName: {
-            if (!root.voiceInput) {
-                return "";
-            }
-            switch (root.voiceInput.state) {
-            case VoiceInput.Recording:
-                return "media-playback-stop-symbolic";
-            case VoiceInput.Transcribing:
-                return "process-working-symbolic";
-            default:
-                return "audio-input-microphone-symbolic";
-            }
-        }
-        checked: !!root.voiceInput && root.voiceInput.state !== VoiceInput.Idle
-        onClicked: root.voiceInput.toggle()
+    VoiceInputButton {
+        voiceInput: root.voiceInput
     }
 
     // What voice typing is doing, or why it stopped

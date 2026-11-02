@@ -118,6 +118,7 @@ ecm_target_qml_sources(plasma-keyboard SOURCES
     qml/TypingPreview.qml
     qml/KeyboardToolbar.qml
     qml/ToolbarButton.qml
+    qml/VoiceInputButton.qml
 )
 ecm_finalize_qml_module(plasma-keyboard)
 

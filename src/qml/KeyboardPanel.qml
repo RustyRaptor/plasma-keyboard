@@ -228,6 +228,19 @@ Kirigami.ShadowedRectangle {
         }
     }
 
+    // Voice typing stays one tap away while word candidates cover the toolbar
+    Component {
+        id: candidateActionsComponent
+
+        VoiceInputButton {
+            height: parent ? parent.height : 0
+            width: height * 1.4
+            voiceInput: root.inputMethodConnection ? root.inputMethodConnection.voiceInput : null
+            // The toolbar says it's listening, and why it stopped
+            onVoiceInputToggled: inputPanel.showToolbar()
+        }
+    }
+
     Keyboard {
         id: inputPanel
         // Keys under the adjust overlay would otherwise still type when it is tapped
@@ -235,6 +248,8 @@ Kirigami.ShadowedRectangle {
         languagePopup: languagePopup
         virtualKeyboardContext: root.virtualKeyboardContext
         toolbar: PlasmaKeyboardSettings.toolbarEnabled ? toolbarComponent : null
+        candidateActions: PlasmaKeyboardSettings.toolbarEnabled && root.inputMethodConnection && root.inputMethodConnection.voiceInput.available
+            ? candidateActionsComponent : null
         heightScale: root.__heightScale
         // The side padding comes out of the floating width, so the keyboard keeps its size
         maximumWidth: root.isFloating ? Math.max(Screen.width * root.__widthFraction - root.sidePadding * 2, 100) : Screen.width

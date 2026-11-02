@@ -1060,6 +1060,36 @@ private Q_SLOTS:
         QTest::qWait(500);
     }
 
+    // Verify voice typing can start while suggestions cover the toolbar, from a microphone button beside them
+    void testVoiceInputStartsFromSuggestions()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        writeSetting("voiceInputEndpoint", u"http://127.0.0.1:9"_s);
+        writeSetting("voiceInputApi", u"WhisperCpp"_s);
+        QTest::qWait(500);
+
+        // Typing h as a new word shows suggestions over the toolbar
+        tapInputPanel(keyPosition(3, 0.5));
+        tapInputPanel(keyPosition(1, 0.6));
+        QTest::qWait(500);
+        const QPointF microphone = toolbarButtonPosition(3);
+        const QRect status(int(microphone.x() + toolbarStripHeight), int(microphone.y() - 8), 300, 16);
+        const int before = darkPixelCount(status);
+        saveScreenshot(u"voice-input-suggestions"_s);
+
+        // The microphone is left of the button at the right edge, and brings the toolbar back to say it's listening
+        tapInputPanel(toolbarButtonPosition(-1) - QPointF(toolbarStripHeight, 0));
+        QTRY_VERIFY_WITH_TIMEOUT(darkPixelCount(status) > before + 30, 3000);
+        saveScreenshot(u"voice-input-from-suggestions"_s);
+
+        // Stop, and back to no voice typing
+        tapToolbarButton(3);
+        QTest::qWait(500);
+        writeSetting("voiceInputApi", u"Disabled"_s);
+        writeSetting("voiceInputEndpoint", u"http://127.0.0.1:8081"_s);
+        QTest::qWait(500);
+    }
+
     // Verify settings changed by other processes (e.g. the settings module) apply right away
     void testAppliesChangedSettings()
     {

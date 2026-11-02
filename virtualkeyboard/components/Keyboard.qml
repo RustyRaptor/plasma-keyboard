@@ -45,6 +45,18 @@ Item {
      */
     property Component toolbar: null
 
+    /**
+     * Buttons shown beside the word candidates, next to the switch to the toolbar.
+     */
+    property Component candidateActions: null
+
+    /**
+     * Shows the toolbar instead of the word candidates.
+     */
+    function showToolbar() {
+        candidateStrip.showToolbar();
+    }
+
     readonly property var inputEngine: virtualKeyboardContext ? virtualKeyboardContext.inputEngine : VirtualKeyboard.inputEngine
     readonly property var keyboardController: virtualKeyboardContext ? virtualKeyboardContext.keyboardController : VirtualKeyboard.keyboardController
     readonly property var keyboardPackageResolver: virtualKeyboardContext ? virtualKeyboardContext.keyboardPackageResolver : VirtualKeyboard.keyboardPackageResolver
@@ -204,6 +216,7 @@ Item {
             Layout.fillWidth: true
             inputEngine: root.inputEngine
             toolbar: root.toolbar
+            candidateActions: root.candidateActions
         }
 
         GestureTypingArea {
