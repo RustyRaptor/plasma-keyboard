@@ -52,12 +52,14 @@ The fork builds as a Flatpak (branch `deck`) so SteamOS stays untouched:
 cd flatpak
 flatpak run org.flatpak.Builder --user --install --force-clean build-dir org.kde.plasma.keyboard.json
 
-# Use it as the input method
-kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod \
-    "$HOME/.local/share/flatpak/exports/share/applications/org.kde.plasma.keyboard.desktop"
+# Make it the only virtual keyboard
+../tools/deck/use-fork-keyboard.sh
 ```
 
-To go back to the stock keyboard, set `InputMethod` back to `/usr/share/applications/org.kde.plasma.keyboard.desktop`.
+The script points KWin at the Flatpak and hides the other virtual keyboards from
+*System Settings > Virtual Keyboard*. The stock keyboard's desktop file has the same name as the Flatpak's,
+so KWin's setting holds the full path to the Flatpak's copy. Run `tools/deck/use-fork-keyboard.sh --undo` to go
+back to the stock keyboard.
 Settings live in `~/.var/app/org.kde.plasma.keyboard/config/plasmakeyboardrc` and open from the toolbar's settings button.
 
 ### Custom layouts
