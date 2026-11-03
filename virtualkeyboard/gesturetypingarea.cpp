@@ -159,17 +159,33 @@ bool GestureTypingArea::handlePointerEvent(QPointerEvent *event)
             return false;
         }
 
-        // Take the point away from the key, which cancels its press
-        event->setExclusiveGrabber(point, this);
+        if (event->type() == QEvent::MouseMove) {
+            // A MultiPointTouchArea ignores losing a mouse grab, as from a remote desktop: it keeps
+            // the key pressed and ignores the key's next press. So leave the grab with the key,
+            // cancel its press, and keep the swipe's moves from it. The key still sees the release,
+            // which clears its state without typing. Check the event, not the device: Qt Wayland
+            // can report a pointer as a touchpad.
+            if (auto *grabber = qobject_cast<QQuickItem *>(event->exclusiveGrabber(point))) {
+                const int cancelPress = grabber->metaObject()->indexOfMethod("cancelPress()");
+                if (cancelPress >= 0) {
+                    grabber->metaObject()->method(cancelPress).invoke(grabber);
+                }
+            }
+            m_keyKeepsGrab = true;
+        } else {
+            // Take the point away from the key, which cancels its press
+            event->setExclusiveGrabber(point, this);
+        }
         setActive(true);
         Q_EMIT trailChanged();
         return true;
     }
     case QEventPoint::Released:
         if (m_active) {
+            const bool keyKeepsGrab = m_keyKeepsGrab;
             m_path.append(position);
             finish();
-            return true;
+            return !keyKeepsGrab;
         }
         m_tracking = false;
         return false;
@@ -252,6 +268,7 @@ void GestureTypingArea::finish()
 void GestureTypingArea::reset()
 {
     m_tracking = false;
+    m_keyKeepsGrab = false;
     m_path.clear();
     setActive(false);
     Q_EMIT trailChanged();

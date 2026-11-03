@@ -84,5 +84,7 @@ private:
     QElapsedTimer m_pressTimer;
     bool m_tracking = false;
     bool m_active = false;
+    // A mouse swipe leaves the grab with the key it started on, see handlePointerEvent()
+    bool m_keyKeepsGrab = false;
     bool m_swipeEnabled = true;
 };

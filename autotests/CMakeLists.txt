@@ -32,6 +32,7 @@ ecm_add_test(mockinputmethodcompositor.cpp LINK_LIBRARIES
 qt6_generate_wayland_protocol_server_sources(mockinputmethodcompositor
     FILES
         ${WaylandProtocols_DATADIR}/unstable/input-method/input-method-unstable-v1.xml
+        ${WaylandProtocols_DATADIR}/unstable/pointer-gestures/pointer-gestures-unstable-v1.xml
         ${PLASMA_WAYLAND_PROTOCOLS_DIR}/fake-input.xml
         ${Wayland_DATADIR}/wayland.xml
 )

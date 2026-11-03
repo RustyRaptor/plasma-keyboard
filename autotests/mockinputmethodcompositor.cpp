@@ -32,6 +32,7 @@
 #include "mockinputmethodcompositor_config.h"
 #include "qwayland-server-fake-input.h"
 #include "qwayland-server-input-method-unstable-v1.h"
+#include "qwayland-server-pointer-gestures-unstable-v1.h"
 #include "qwayland-server-wayland.h"
 
 #include <fcntl.h>
@@ -496,6 +497,62 @@ protected:
     }
 };
 
+/**
+ * Mock of the pointer gestures protocol, which KWin offers. Qt Wayland then reports the pointer
+ * as a touchpad, so mouse events arrive from a TouchPad device as on a real Plasma session.
+ */
+class PointerGesturesV1 : public QWaylandCompositorExtensionTemplate<PointerGesturesV1>, public QtWaylandServer::zwp_pointer_gestures_v1
+{
+    Q_OBJECT
+public:
+    explicit PointerGesturesV1(QWaylandCompositor *compositor)
+        : QWaylandCompositorExtensionTemplate<PointerGesturesV1>(compositor)
+    {
+    }
+
+    void initialize() override
+    {
+        QWaylandCompositorExtensionTemplate::initialize();
+        auto *compositor = static_cast<QWaylandCompositor *>(extensionContainer());
+        init(compositor->display(), 1);
+    }
+
+protected:
+    void zwp_pointer_gestures_v1_get_swipe_gesture(Resource *resource, uint32_t id, wl_resource *pointer) override
+    {
+        Q_UNUSED(pointer)
+        m_swipe.add(resource->client(), id, resource->version());
+    }
+
+    void zwp_pointer_gestures_v1_get_pinch_gesture(Resource *resource, uint32_t id, wl_resource *pointer) override
+    {
+        Q_UNUSED(pointer)
+        m_pinch.add(resource->client(), id, resource->version());
+    }
+
+private:
+    class SwipeGesture : public QtWaylandServer::zwp_pointer_gesture_swipe_v1
+    {
+    protected:
+        void zwp_pointer_gesture_swipe_v1_destroy(Resource *resource) override
+        {
+            wl_resource_destroy(resource->handle);
+        }
+    };
+
+    class PinchGesture : public QtWaylandServer::zwp_pointer_gesture_pinch_v1
+    {
+    protected:
+        void zwp_pointer_gesture_pinch_v1_destroy(Resource *resource) override
+        {
+            wl_resource_destroy(resource->handle);
+        }
+    };
+
+    SwipeGesture m_swipe;
+    PinchGesture m_pinch;
+};
+
 class InputMethodV1 : public QWaylandCompositorExtensionTemplate<InputMethodV1>, public QtWaylandServer::zwp_input_method_v1
 {
     Q_OBJECT
@@ -648,6 +705,9 @@ private Q_SLOTS:
 
         m_fakeInput = std::make_unique<FakeInputV1>(m_compositor.get());
         m_fakeInput->initialize();
+
+        m_pointerGestures = std::make_unique<PointerGesturesV1>(m_compositor.get());
+        m_pointerGestures->initialize();
 
         // Like KWin, emulated keys go through the input method's keyboard grab
         connect(m_fakeInput.get(), &FakeInputV1::keyboardKey, this, [this](uint32_t key, uint32_t state) {
@@ -1597,6 +1657,35 @@ private Q_SLOTS:
         QTest::qWait(100);
     }
 
+    // Verify swiping with a mouse, as through a remote desktop, leaves the starting key looking released
+    void testGestureTypingWithMouseReleasesStartKey()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        // A space first, so the swiped word doesn't continue earlier typing
+        tapInputPanel(keyPosition(3, 0.5));
+        QTest::qWait(300);
+        const QPoint h = keyPosition(1, 0.6).toPoint();
+        const QRgb released = panelImage().pixel(h + QPoint(15, 10));
+
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        mouseSwipeInputPanel({keyPosition(1, 0.6), keyPosition(0, 0.25), keyPosition(1, 0.9), keyPosition(0, 0.85)});
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString().trimmed(), u"hello"_s);
+
+        QTest::qWait(300);
+        saveScreenshot(u"gesture-mouse"_s);
+        QCOMPARE(panelImage().pixel(h + QPoint(15, 10)), released);
+
+        // The starting key works again right away
+        tapInputPanel(keyPosition(3, 0.5));
+        tapInputPanel(keyPosition(1, 0.6));
+        QVERIFY(commitStringSpy.count() == 2 || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"h"_s);
+
+        tapInputPanel(keyPosition(3, 0.5));
+        QTest::qWait(100);
+    }
+
     // Verify a pinned keyboard stays without an input context and types by emulating keys
     void testPinnedKeyboardTypesWithoutContext()
     {
@@ -1764,6 +1853,34 @@ private:
     }
 
     /**
+     * Helper that drags the mouse through several points on the on-screen keyboard, as a remote desktop delivers a swipe.
+     */
+    void mouseSwipeInputPanel(const QList<QPointF> &points, int stepsPerSegment = 8)
+    {
+        QVERIFY(points.size() >= 2);
+        if (m_panelView.surface() != m_inputPanel->toplevelSurface()) {
+            m_panelView.setSurface(m_inputPanel->toplevelSurface());
+        }
+
+        m_seat->sendMouseMoveEvent(&m_panelView, points.constFirst());
+        m_seat->sendMousePressEvent(Qt::LeftButton);
+        wl_display_flush_clients(m_compositor->display());
+        QTest::qWait(16);
+
+        for (qsizetype segment = 1; segment < points.size(); ++segment) {
+            for (int i = 1; i <= stepsPerSegment; ++i) {
+                const QPointF position = points.at(segment - 1) + (points.at(segment) - points.at(segment - 1)) * (qreal(i) / stepsPerSegment);
+                m_seat->sendMouseMoveEvent(&m_panelView, position);
+                wl_display_flush_clients(m_compositor->display());
+                QTest::qWait(8);
+            }
+        }
+
+        m_seat->sendMouseReleaseEvent(Qt::LeftButton);
+        wl_display_flush_clients(m_compositor->display());
+    }
+
+    /**
      * Helper that swipes a finger through several points on the on-screen keyboard.
      */
     void swipeInputPanel(const QList<QPointF> &points, int stepsPerSegment = 8)
@@ -1925,6 +2042,7 @@ private:
     std::unique_ptr<InputMethodV1> m_inputMethod;
     std::unique_ptr<InputPanelV1> m_inputPanel;
     std::unique_ptr<FakeInputV1> m_fakeInput;
+    std::unique_ptr<PointerGesturesV1> m_pointerGestures;
     QWaylandView m_panelView;
     std::unique_ptr<QProcess> m_child;
 };
