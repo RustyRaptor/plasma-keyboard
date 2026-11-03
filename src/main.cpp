@@ -44,6 +44,9 @@ int main(int argc, char **argv)
     // reconnect, which would keep this keyboard running as an ordinary client beside the new one.
     qunsetenv("QT_WAYLAND_RECONNECT");
 
+    // KWin hands the input method it starts a connection in WAYLAND_SOCKET, which connecting consumes
+    const bool startedByCompositor = qEnvironmentVariableIsSet("WAYLAND_SOCKET");
+
     QGuiApplication application(argc, argv);
 
     KLocalizedString::setApplicationDomain("plasma-keyboard");
@@ -70,6 +73,14 @@ int main(int argc, char **argv)
         aboutData.setupCommandLine(&parser);
         parser.process(application);
         aboutData.processCommandLine(&parser);
+    }
+
+    // KWin lets any client bind the input method protocol, so a copy started any other way, such as by name
+    // from Plasma, would compete with the keyboard KWin started.
+    if (!startedByCompositor) {
+        qCCritical(PlasmaKeyboard)
+            << "Cannot run plasma-keyboard standalone. You can enable it in Plasma's System Settings app, on the “Virtual Keyboard” page.";
+        return 1;
     }
 
     if (!PLASMA_KEYBOARD_SOUNDS_ENABLED) {

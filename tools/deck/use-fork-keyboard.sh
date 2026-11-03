@@ -106,10 +106,9 @@ status() {
 
     local found
     found=$(first_desktop_file "$app.desktop")
-    case "$found" in
-        "$ours" | "$overrides/$app.desktop") ;;
-        *) say "Looking up $app.desktop by name finds $found, so the settings page and Plasma can start the stock keyboard. Run $0 to hide it." ;;
-    esac
+    if ! grep -q -- "--branch=$branch" "$found" 2>/dev/null; then
+        say "Looking up $app.desktop by name finds $found, so the settings page and Plasma can start the stock keyboard. Run $0 to fix it."
+    fi
 
     if flatpak info --user "$app//$branch" >/dev/null 2>&1; then
         say "Installed fork: $(flatpak run --branch="$branch" --command=plasma-keyboard "$app" --version 2>/dev/null || echo '(could not ask it)')"
@@ -170,19 +169,29 @@ switch() {
         kreadconfig6 --file kwinrc --group Wayland --key InputMethod > "$state/input-method"
     fi
 
-    # A user file with Hidden=true hides a desktop file of the same name from System Settings and from
-    # anything that starts it by name. The stock keyboard's file has the same name as the Flatpak's, and
-    # where /usr/share comes first in XDG_DATA_DIRS a lookup by that name finds the stock one. Hiding the
-    # name too stops the settings page from offering it and Plasma from starting it; KWin keeps opening
-    # the Flatpak's file by its full path.
+    # A user file with Hidden=true hides a desktop file of the same name from System Settings.
     local file name
     while IFS= read -r file; do
         name=$(basename "$file")
+        [ "$name" = "$app.desktop" ] && continue
         [ -e "$overrides/$name" ] && continue
         printf '[Desktop Entry]\nHidden=true\n' > "$overrides/$name"
         echo "$overrides/$name" >> "$state/hidden"
         say "hid $name"
     done < <(system_keyboards)
+
+    # The stock keyboard's file has the same name as the Flatpak's. Where /usr/share comes first in
+    # XDG_DATA_DIRS, looking that name up finds the stock one, so the settings page offers it and Plasma
+    # starts it (Hidden=true doesn't help: the lookup falls through to the next directory). A copy of the
+    # Flatpak's file in the user's directory wins every lookup; the fork exits when KWin didn't start it.
+    local override="$overrides/$app.desktop"
+    if [ ! -e "$override" ] || grep -q -x -F "$override" "$state/hidden" 2>/dev/null; then
+        { echo "# Written by use-fork-keyboard.sh: makes $app.desktop mean the fork's Flatpak"; cat "$ours"; } > "$override"
+        grep -q -x -F "$override" "$state/hidden" 2>/dev/null || echo "$override" >> "$state/hidden"
+        say "$app.desktop now means the fork"
+    elif ! grep -q -- "--branch=$branch" "$override"; then
+        say "warning: $override exists and isn't the fork's; the settings page and Plasma may start something else"
+    fi
 
     # Mode 0 never shows the keyboard
     local mode

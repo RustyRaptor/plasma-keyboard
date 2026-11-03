@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <xkbcommon/xkbcommon-compose.h>
 
@@ -735,7 +736,17 @@ private Q_SLOTS:
             qWarning() << "child state:" << m_child->state() << "error:" << m_child->error() << m_child->errorString() << "exitStatus:" << m_child->exitStatus()
                        << "exitCode:" << m_child->exitCode();
         });
+        // Hand the keyboard its connection the way KWin does, in WAYLAND_SOCKET
+        int fds[2];
+        QVERIFY(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds) == 0);
+        QVERIFY(wl_client_create(m_compositor->display(), fds[0]));
+        const int childFd = fds[1];
+        m_child->setChildProcessModifier([childFd] {
+            fcntl(childFd, F_SETFD, 0);
+        });
+
         auto env = QProcessEnvironment::systemEnvironment();
+        env.insert(u"WAYLAND_SOCKET"_s, QString::number(childFd));
         env.insert(u"WAYLAND_DISPLAY"_s, m_socketPath);
         // The child must talk to the mock compositor even if the test itself runs offscreen
         env.insert(u"QT_QPA_PLATFORM"_s, u"wayland"_s);
@@ -761,6 +772,7 @@ private Q_SLOTS:
         m_child->setProgram(QStringLiteral(PLASMA_KEYBOARD_BINARY_PATH));
 #endif
         m_child->start();
+        close(childFd);
         QVERIFY2(m_child->waitForStarted(), qPrintable(m_child->errorString()));
 
         qInfo().noquote().nospace() << "Compositor running on WAYLAND_DISPLAY=" << m_socketPath << " " << PLASMA_KEYBOARD_BINARY_PATH;
@@ -1759,6 +1771,37 @@ private Q_SLOTS:
         tapInputPanel(toolbarButtonPosition(-2));
         QTRY_VERIFY_WITH_TIMEOUT(!inputPanelMapped(), 3000);
 
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
+    void testRefusesToRunWithoutKWin()
+    {
+        // KWin lets any client bind the input method protocol, so a copy started any other way,
+        // such as by name from Plasma, would compete with the keyboard KWin started.
+        QProcess standalone;
+        auto env = QProcessEnvironment::systemEnvironment();
+        env.remove(u"WAYLAND_SOCKET"_s);
+        env.insert(u"WAYLAND_DISPLAY"_s, m_socketPath);
+        env.insert(u"QT_QPA_PLATFORM"_s, u"wayland"_s);
+        env.insert(u"QT_QUICK_BACKEND"_s, u"software"_s);
+        // Without a terminal Qt would log to the journal
+        env.insert(u"QT_FORCE_STDERR_LOGGING"_s, u"1"_s);
+        standalone.setProcessEnvironment(env);
+        QSignalSpy finishedSpy(&standalone, &QProcess::finished);
+        standalone.start(QStringLiteral(PLASMA_KEYBOARD_BINARY_PATH), {});
+        QVERIFY(standalone.waitForStarted());
+        // Keep the event loop running: the process talks to this compositor before it gets to exit
+        const bool finished = finishedSpy.count() || finishedSpy.wait(10000);
+        if (!finished) {
+            standalone.kill();
+            standalone.waitForFinished();
+        }
+        QVERIFY2(finished, "a keyboard that KWin didn't start kept running");
+        QCOMPARE(standalone.exitCode(), 1);
+        QVERIFY(standalone.readAllStandardError().contains("standalone"));
+
+        // The keyboard KWin started still works
         reactivateInputMethod();
         QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
     }
