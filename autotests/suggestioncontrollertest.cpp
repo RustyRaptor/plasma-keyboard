@@ -184,6 +184,30 @@ private Q_SLOTS:
         QCOMPARE(engine.candidates(), QStringList({u"world"_s}));
     }
 
+    void dropsPredictionsOutsideTheDictionary()
+    {
+        auto *backend = new TextInputBackend;
+        InputEngine engine(backend);
+        engine.setTextComposer(new BasicTextComposer);
+        SuggestionController controller(&engine);
+        controller.setDictionary(sampleDictionary());
+        controller.setEnabled(true);
+
+        // Small models repeat letters of words they don't know
+        backend->setText(u"Hi hih"_s);
+        controller.applyPrediction(u"Hi hih"_s, u"hihhiiiiiiiii"_s);
+        QCOMPARE(engine.candidates(), QStringList());
+
+        // Words typed often enough count as known
+        auto dictionary = sampleDictionary();
+        dictionary->learn(u"Hihgi"_s);
+        dictionary->learn(u"Hihgi"_s);
+        controller.setDictionary(dictionary);
+        backend->setText(u"Hi hih"_s);
+        controller.applyPrediction(u"Hi hih"_s, u"hihgi"_s);
+        QCOMPARE(engine.candidates(), QStringList({u"hihgi"_s}));
+    }
+
     void ignoresStalePredictions()
     {
         auto *backend = new TextInputBackend;

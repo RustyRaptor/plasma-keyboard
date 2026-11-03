@@ -149,7 +149,9 @@ void SuggestionController::update()
     }
 
     QStringList suggestions;
-    if (m_predictionText == m_textBeforeCursor && !m_predictedWord.isEmpty()) {
+    // Small models make up words, often by repeating letters of an unknown one
+    const bool knownPrediction = !m_dictionary || m_dictionary->contains(m_predictedWord);
+    if (m_predictionText == m_textBeforeCursor && !m_predictedWord.isEmpty() && knownPrediction) {
         suggestions.append(m_predictedWord);
     }
     if (m_dictionary && !word.isEmpty()) {
