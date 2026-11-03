@@ -11,6 +11,9 @@ container="${2:-pk-desktop}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 
 rsync -a --delete --exclude .git --exclude '/build*' "$root/" "$host:pk/src/"
+# The copy has no .git, so tell the build which commit it is (see cmake/PlasmaKeyboardBuildId.cmake)
+printf '%s %s\n' "$(git -C "$root" describe --always --abbrev=7 --dirty=+ --exclude='*')" "$(git -C "$root" log -1 --format=%cs)" |
+    ssh "$host" 'cat > pk/src/.build-commit'
 ssh "$host" podman exec -i -u root "$container" sh -s <<'SCRIPT'
 set -e
 cd /src

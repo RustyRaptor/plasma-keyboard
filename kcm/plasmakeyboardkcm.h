@@ -23,6 +23,7 @@ class PlasmaKeyboardKcm : public KQuickManagedConfigModule
     Q_PROPERTY(QAbstractItemModel *availableKeyboardLayouts READ availableKeyboardLayouts CONSTANT)
     Q_PROPERTY(QAbstractItemModel *availableKeyboardLayoutGroups READ availableKeyboardLayoutGroups CONSTANT)
     Q_PROPERTY(bool hasHiddenKeyboardLayouts READ hasHiddenKeyboardLayouts CONSTANT)
+    Q_PROPERTY(QString buildSummary READ buildSummary CONSTANT)
     Q_PROPERTY(bool keyboardLayoutFormFactorFilterEnabled READ keyboardLayoutFormFactorFilterEnabled WRITE setKeyboardLayoutFormFactorFilterEnabled NOTIFY
                    keyboardLayoutFormFactorFilterEnabledChanged)
 
@@ -34,6 +35,9 @@ public:
     QAbstractItemModel *availableKeyboardLayouts() const;
     QAbstractItemModel *availableKeyboardLayoutGroups() const;
     bool hasHiddenKeyboardLayouts() const;
+
+    // Which build of the keyboard these settings belong to
+    QString buildSummary() const;
 
     bool keyboardLayoutFormFactorFilterEnabled() const;
     void setKeyboardLayoutFormFactorFilterEnabled(bool enabled);

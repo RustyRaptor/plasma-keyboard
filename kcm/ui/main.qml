@@ -365,5 +365,18 @@ KCM.SimpleKCM {
             value: kcm.plasmaKeyboardSettings.vibrationStrength
             onMoved: kcm.plasmaKeyboardSettings.vibrationStrength = value
         }
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+        }
+
+        QQC2.Label {
+            Kirigami.FormData.label: i18n("Build:")
+            text: kcm.buildSummary
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+            opacity: 0.7
+        }
     }
 }

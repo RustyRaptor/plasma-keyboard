@@ -178,3 +178,13 @@ ecm_add_test(emittedkeystest.cpp ${CMAKE_SOURCE_DIR}/src/emittedkeys.cpp
         Qt::Test
 )
 target_include_directories(emittedkeystest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+ecm_add_test(buildinfotest.cpp ${CMAKE_SOURCE_DIR}/src/buildinfo.cpp
+    TEST_NAME buildinfotest
+    LINK_LIBRARIES
+        Qt::Core
+        Qt::Qml
+        Qt::Test
+)
+target_include_directories(buildinfotest PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR})
+add_dependencies(buildinfotest plasma_keyboard_build_id)

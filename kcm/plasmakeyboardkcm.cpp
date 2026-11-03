@@ -7,6 +7,8 @@
 
 #include "plasmakeyboardkcm.h"
 
+#include "buildinfo.h"
+
 #include "keyboardlayoutmetadata.h"
 
 #include <KRuntimePlatform>
@@ -78,6 +80,11 @@ QAbstractItemModel *PlasmaKeyboardKcm::availableKeyboardLayoutGroups() const
 bool PlasmaKeyboardKcm::hasHiddenKeyboardLayouts() const
 {
     return m_hasHiddenKeyboardLayouts;
+}
+
+QString PlasmaKeyboardKcm::buildSummary() const
+{
+    return BuildInfo::summary();
 }
 
 bool PlasmaKeyboardKcm::keyboardLayoutFormFactorFilterEnabled() const

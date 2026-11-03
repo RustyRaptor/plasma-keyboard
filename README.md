@@ -60,6 +60,11 @@ The script points KWin at the Flatpak and hides the other virtual keyboards from
 *System Settings > Virtual Keyboard*. The stock keyboard's desktop file has the same name as the Flatpak's,
 so KWin's setting holds the full path to the Flatpak's copy. Run `tools/deck/use-fork-keyboard.sh --undo` to go
 back to the stock keyboard.
+
+To see which keyboard is running, run `tools/deck/use-fork-keyboard.sh --status`. The fork also names its build,
+such as `6.8.80 fork 40f2ac8 (2026-11-03, Flatpak deck)`, below the buttons of the *Move* overlay, at the end of
+its settings page, and in `plasma-keyboard --version`. A trailing `+` on the commit means the build had uncommitted
+changes. The stock keyboard has no *Move* button.
 Settings live in `~/.var/app/org.kde.plasma.keyboard/config/plasmakeyboardrc` and open from the toolbar's settings button.
 
 ### Custom layouts

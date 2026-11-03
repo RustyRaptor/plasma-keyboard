@@ -6,8 +6,9 @@
 # and hides every other virtual keyboard from System Settings > Virtual Keyboard.
 # Only files in your home directory change, so it works on SteamOS's read-only root.
 #
-#   use-fork-keyboard.sh          switch to the fork
-#   use-fork-keyboard.sh --undo   go back to what was set before
+#   use-fork-keyboard.sh            switch to the fork
+#   use-fork-keyboard.sh --status   say which keyboard KWin starts, which one runs, and which build it is
+#   use-fork-keyboard.sh --undo     go back to what was set before
 
 set -euo pipefail
 
@@ -51,6 +52,48 @@ running_keyboard() {
         esac
     done
     echo none
+}
+
+status() {
+    local setting
+    setting=$(kreadconfig6 --file kwinrc --group Wayland --key InputMethod)
+    say "KWin starts: ${setting:-(nothing)}"
+    [ "$setting" = "$ours" ] || say "  That is not the fork. Run $0 to switch."
+    if pgrep -a -x kwin_wayland | grep -q -- "--inputmethod"; then
+        say "  But kwin_wayland was started with --inputmethod, which wins over that setting:"
+        pgrep -a -x kwin_wayland
+    fi
+
+    local pid exe running=""
+    for pid in $(pgrep -x plasma-keyboard || true) $(pgrep -x maliit-keyboard || true); do
+        exe=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+        case "$exe" in
+            /app/*) say "Running: the fork (Flatpak), pid $pid, since $(ps -o lstart= -p "$pid")" ;;
+            *) say "Running: the STOCK keyboard ($exe), pid $pid, since $(ps -o lstart= -p "$pid")" ;;
+        esac
+        running="$running $pid"
+    done
+    [ -n "$running" ] || say "Running: no keyboard"
+
+    if flatpak info --user "$app//$branch" >/dev/null 2>&1; then
+        say "Installed fork: $(flatpak run --branch="$branch" --command=plasma-keyboard "$app" --version 2>/dev/null || echo '(could not ask it)')"
+        # A keyboard started before the last install keeps running the old build
+        local deployed started
+        deployed=$(stat -c %Y "$(flatpak info --user --show-location "$app//$branch")")
+        for pid in $running; do
+            case "$(readlink "/proc/$pid/exe" 2>/dev/null)" in /app/*) ;; *) continue ;; esac
+            started=$(( $(date +%s) - $(ps -o etimes= -p "$pid") ))
+            if [ "$started" -lt "$deployed" ]; then
+                say "  The running fork started before this build was installed, so it is an older build. Run $0 to restart it."
+            fi
+        done
+    else
+        say "Installed fork: none"
+    fi
+
+    local crashes
+    crashes=$(journalctl --user -b 2>/dev/null | grep -c "Input Method crashed" || true)
+    [ "$crashes" = 0 ] || say "KWin restarted a crashed keyboard $crashes times since boot: journalctl --user -b | grep -A3 'Input Method crashed'"
 }
 
 undo() {
@@ -129,6 +172,7 @@ switch() {
 
 case "${1:-}" in
     "") switch ;;
+    --status) status ;;
     --undo) undo ;;
-    *) fail "usage: $0 [--undo]" ;;
+    *) fail "usage: $0 [--status | --undo]" ;;
 esac

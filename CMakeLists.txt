@@ -67,6 +67,15 @@ ecm_set_disabled_deprecation_versions(QT 6.11.0
 
 ecm_setup_version(${PROJECT_VERSION} VARIABLE_PREFIX PLASMA_KEYBOARD VERSION_HEADER plasma_keyboard_version.h)
 
+# The git commit of the source, refreshed by every build, so the keyboard can say which build it is
+add_custom_target(plasma_keyboard_build_id ALL
+    COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -DOUTPUT=${CMAKE_BINARY_DIR}/plasma_keyboard_build_id.h
+            -P ${CMAKE_SOURCE_DIR}/cmake/PlasmaKeyboardBuildId.cmake
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/plasma_keyboard_build_id.h
+    COMMENT "Recording the git commit of this build"
+    VERBATIM
+)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XKBCommon REQUIRED IMPORTED_TARGET xkbcommon)
 

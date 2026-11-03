@@ -73,6 +73,16 @@ Rectangle {
                 onClicked: root.doneRequested()
             }
         }
+
+        // Tells this build apart from the stock keyboard and from older builds
+        QQC2.Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: i18n("Build %1", BuildInfo.summary)
+            textFormat: Text.PlainText
+            color: BreezeConstants.keyTextColor
+            opacity: 0.7
+            font: Kirigami.Theme.smallFont
+        }
     }
 
     Rectangle {

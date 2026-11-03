@@ -20,6 +20,8 @@ qt6_generate_wayland_protocol_client_sources(plasma-keyboard FILES ${PLASMA_WAYL
 target_sources(plasma-keyboard PRIVATE
     audioconversion.cpp
     audioconversion.h
+    buildinfo.cpp
+    buildinfo.h
     configfilewatcher.cpp
     configfilewatcher.h
     emittedkeys.cpp
@@ -121,6 +123,7 @@ ecm_target_qml_sources(plasma-keyboard SOURCES
     qml/VoiceInputButton.qml
 )
 ecm_finalize_qml_module(plasma-keyboard)
+add_dependencies(plasma-keyboard plasma_keyboard_build_id)
 
 kconfig_add_kcfg_files(plasma-keyboard GENERATE_MOC plasmakeyboardsettings.kcfgc)
 

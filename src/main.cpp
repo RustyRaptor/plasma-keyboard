@@ -5,12 +5,12 @@
     SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
 */
 
+#include "buildinfo.h"
 #include "config-plasma-keyboard.h"
 #include "configfilewatcher.h"
 #include "inputpanelintegration.h"
 #include "logging.h"
 #include "plasmakeyboardsettings.h"
-#include <plasma_keyboard_version.h>
 
 #include <KAboutData>
 #include <KConfigWatcher>
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
     KAboutData aboutData(QStringLiteral("plasma-keyboard"),
                          i18n("Plasma Keyboard"),
-                         QStringLiteral(PLASMA_KEYBOARD_VERSION_STRING),
+                         BuildInfo::summary(),
                          i18n("An on-screen keyboard for Plasma"),
                          KAboutLicense::GPL,
                          i18n("Copyright 2024, Aleix Pol Gonzalez"));
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     });
 #endif
 
-    qCDebug(PlasmaKeyboard) << "Starting Plasma Keyboard application";
+    qCDebug(PlasmaKeyboard) << "Starting Plasma Keyboard" << BuildInfo::summary();
 
     return application.exec();
 }
