@@ -21,11 +21,39 @@ state="${XDG_STATE_HOME:-$HOME/.local/state}/plasma-keyboard-fork"
 say() { printf '%s\n' "$*"; }
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
-# KWin starts an input method again only when the setting changes, so clear it first
+# KWin starts an input method again only when the setting changes, so clear it first.
+# KWin doesn't keep other processes from acting as the keyboard, so stop every other one in between.
 restart_input_method() {
     kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod ""
-    sleep 2
+    sleep 1
+    flatpak kill "$app" 2>/dev/null || true
+    pkill -x plasma-keyboard || true
+    pkill -x maliit-keyboard || true
+    sleep 1
     kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod "$1"
+}
+
+# Whether a process descends from KWin, which starts the one keyboard it means to use
+started_by_kwin() {
+    local pid=$1 kwin
+    kwin=$(pgrep -x kwin_wayland | head -1)
+    while [ -n "$pid" ] && [ "$pid" -gt 1 ]; do
+        [ "$pid" = "$kwin" ] && return 0
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    done
+    return 1
+}
+
+# The desktop file a lookup by name finds first, the way the settings page and Plasma find it
+first_desktop_file() {
+    local dir dirs
+    IFS=: read -r -a dirs <<< "${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    for dir in "${dirs[@]}"; do
+        if [ -e "$dir/applications/$1" ]; then
+            echo "$dir/applications/$1"
+            return
+        fi
+    done
 }
 
 # Desktop files of every virtual keyboard installed outside the home directory
@@ -64,16 +92,24 @@ status() {
         pgrep -a -x kwin_wayland
     fi
 
-    local pid exe running=""
+    local pid exe running="" who
     for pid in $(pgrep -x plasma-keyboard || true) $(pgrep -x maliit-keyboard || true); do
         exe=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+        if started_by_kwin "$pid"; then who="started by KWin"; else who="NOT started by KWin, competes with it"; fi
         case "$exe" in
-            /app/*) say "Running: the fork (Flatpak), pid $pid, since $(ps -o lstart= -p "$pid")" ;;
-            *) say "Running: the STOCK keyboard ($exe), pid $pid, since $(ps -o lstart= -p "$pid")" ;;
+            /app/*) say "Running: the fork (Flatpak), pid $pid, since $(ps -o lstart= -p "$pid"), $who" ;;
+            *) say "Running: the STOCK keyboard ($exe), pid $pid, since $(ps -o lstart= -p "$pid"), $who" ;;
         esac
         running="$running $pid"
     done
     [ -n "$running" ] || say "Running: no keyboard"
+
+    local found
+    found=$(first_desktop_file "$app.desktop")
+    case "$found" in
+        "$ours" | "$overrides/$app.desktop") ;;
+        *) say "Looking up $app.desktop by name finds $found, so the settings page and Plasma can start the stock keyboard. Run $0 to hide it." ;;
+    esac
 
     if flatpak info --user "$app//$branch" >/dev/null 2>&1; then
         say "Installed fork: $(flatpak run --branch="$branch" --command=plasma-keyboard "$app" --version 2>/dev/null || echo '(could not ask it)')"
@@ -134,12 +170,14 @@ switch() {
         kreadconfig6 --file kwinrc --group Wayland --key InputMethod > "$state/input-method"
     fi
 
-    # A user file with Hidden=true hides a desktop file of the same name from System Settings.
-    # The stock plasma-keyboard has the same name as the Flatpak's file, which already shadows it.
+    # A user file with Hidden=true hides a desktop file of the same name from System Settings and from
+    # anything that starts it by name. The stock keyboard's file has the same name as the Flatpak's, and
+    # where /usr/share comes first in XDG_DATA_DIRS a lookup by that name finds the stock one. Hiding the
+    # name too stops the settings page from offering it and Plasma from starting it; KWin keeps opening
+    # the Flatpak's file by its full path.
     local file name
     while IFS= read -r file; do
         name=$(basename "$file")
-        [ "$name" = "$app.desktop" ] && continue
         [ -e "$overrides/$name" ] && continue
         printf '[Desktop Entry]\nHidden=true\n' > "$overrides/$name"
         echo "$overrides/$name" >> "$state/hidden"

@@ -40,6 +40,10 @@ int main(int argc, char **argv)
         qputenv("QML_NO_TOUCH_COMPRESSION", "1");
     }
 
+    // KWin closes the connection when it switches to another input method. Plasma sessions turn on Qt's
+    // reconnect, which would keep this keyboard running as an ordinary client beside the new one.
+    qunsetenv("QT_WAYLAND_RECONNECT");
+
     QGuiApplication application(argc, argv);
 
     KLocalizedString::setApplicationDomain("plasma-keyboard");

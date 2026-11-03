@@ -16,6 +16,7 @@
         "--share=network",
         "--socket=pulseaudio",
         "--device=all",
+        "--filesystem=xdg-config/kdeglobals:ro",
         "--env=QML2_IMPORT_PATH=/app/qml:/app/lib/qml:/app/lib64/qml",
         "--env=QT_PLUGIN_PATH=/app/plugins:/app/lib64/plugins:/app/lib/plugins:/usr/share/runtime/lib/plugins"
     ],

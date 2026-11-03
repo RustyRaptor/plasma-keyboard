@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <QtWaylandCompositor/QWaylandClient>
 #include <QtWaylandCompositor/QWaylandCompositor>
 #include <QtWaylandCompositor/QWaylandCompositorExtension>
 #include <QtWaylandCompositor/QWaylandCompositorExtensionTemplate>
@@ -739,6 +740,8 @@ private Q_SLOTS:
         // The child must talk to the mock compositor even if the test itself runs offscreen
         env.insert(u"QT_QPA_PLATFORM"_s, u"wayland"_s);
         env.insert(u"QT_QUICK_BACKEND"_s, u"software"_s); // Without this plasma-keyboard explodes on alpine for some reason
+        // Plasma sessions set this; an input method must still not reconnect, see testExitsWhenCompositorDropsIt
+        env.insert(u"QT_WAYLAND_RECONNECT"_s, u"1"_s);
         m_child->setProcessEnvironment(env);
 
 #if PLASMA_KEYBOARD_UNDER_GDB
@@ -1758,6 +1761,19 @@ private Q_SLOTS:
 
         reactivateInputMethod();
         QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
+    // Must stay the last test: it ends the keyboard process.
+    void testExitsWhenCompositorDropsIt()
+    {
+        // KWin closes the connection when it switches to another input method. Reconnecting would leave
+        // a second keyboard that binds the input method protocol again and competes with the new one.
+        const auto clients = m_compositor->clients();
+        QVERIFY(!clients.isEmpty());
+        for (QWaylandClient *client : clients) {
+            client->close();
+        }
+        QVERIFY2(m_child->state() == QProcess::NotRunning || m_child->waitForFinished(10000), "the keyboard kept running after losing its compositor");
     }
 
     void cleanupTestCase()
