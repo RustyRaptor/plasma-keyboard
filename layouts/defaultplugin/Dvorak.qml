@@ -50,13 +50,14 @@ KeyboardLayout {
 
     KeyboardRow {
         SymbolModeKey { weight: functionKeyWeight }
+        LayerKey { targetLayer: "emoji"; iconName: "smiley-symbolic"; weight: defaultKeyWeight }
         ChangeLanguageKey { weight: defaultKeyWeight }
         Key {
             key: Qt.Key_Q
             text: "q"
             weight: defaultKeyWeight
         }
-        SpaceKey { weight: 300 }
+        SpaceKey { weight: 300 - defaultKeyWeight }
         Key {
             key: Qt.Key_Z
             text: "z"

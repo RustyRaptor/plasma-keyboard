@@ -40,6 +40,14 @@ private Q_SLOTS:
         QVERIFY(result.qml.contains(u"maxWidthToHeightRatio: 2"_s));
     }
 
+    void emojiKeyOpensTheEmojiLayer()
+    {
+        const auto result = CustomLayout::generate("{\"rows\": [[\"symbols\", \"emoji\", \"space\"]]}");
+
+        QVERIFY2(result.error.isEmpty(), qPrintable(result.error));
+        QVERIFY(result.qml.contains(u"LayerKey { targetLayer: \"emoji\"; iconName: \"smiley-symbolic\" }"_s));
+    }
+
     void arrowsBecomeACluster()
     {
         const auto result = CustomLayout::generate("{\"rows\": [[\"arrows\"]]}");

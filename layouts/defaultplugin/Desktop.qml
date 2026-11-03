@@ -80,6 +80,7 @@ KeyboardLayout {
 
     KeyboardRow {
         SymbolModeKey { }
+        LayerKey { targetLayer: "emoji"; iconName: "smiley-symbolic" }
         KeysymKey { key: Qt.Key_Control; displayText: "Ctrl"; sticky: true }
         KeysymKey { key: Qt.Key_Meta; iconName: "start-here-symbolic"; displayText: ""; sticky: true }
         KeysymKey { key: Qt.Key_Alt; displayText: "Alt"; sticky: true }
@@ -89,7 +90,7 @@ KeyboardLayout {
             weight: visible ? root.defaultKeyWeight : 0
             modes: root.inputModeKeyModes
         }
-        SpaceKey { weight: root.defaultKeyWeight * (root.inputModeKeyVisible ? 4 : 5) }
+        SpaceKey { weight: root.defaultKeyWeight * (root.inputModeKeyVisible ? 3 : 4) }
         KeysymKey { key: Qt.Key_Left; iconName: "go-previous-symbolic"; displayText: ""; repeat: true }
         KeyboardColumn {
             weight: root.defaultKeyWeight

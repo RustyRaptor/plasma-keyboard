@@ -46,9 +46,10 @@ KeyboardLayout {
     }
     KeyboardRow {
         SymbolModeKey { weight: 150 }
+        LayerKey { targetLayer: "emoji"; iconName: "smiley-symbolic" }
         ChangeLanguageKey {}
         Key { key: Qt.Key_Comma; text: ","; secondaryStyle: true }
-        SpaceKey { weight: 300 }
+        SpaceKey { weight: 200 }
         Key { key: Qt.Key_Period; text: "."; alternativeKeys: "!.?"; smallText: "!?"; secondaryStyle: true }
         HideKeyboardKey {}
         EnterKey { weight: 150 }

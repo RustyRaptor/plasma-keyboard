@@ -37,7 +37,7 @@ See also: [userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps](https://userbase
 | Editing layer | Toolbar → select-text button: select all, cut, copy, paste, undo/redo, word and line navigation, a selection toggle and a cursor pad | — |
 | Gesture typing | Swipe across the letters of a word without lifting your finger | *Gestures* |
 | Steam Deck haptics | Ticks the trackpads (or rumbles) on key presses, through the controller's hidraw device | *Haptics* |
-| Emoji layer | Toolbar → smiley button. Long press for skin tones. Recently used emoji sit in a row above the groups | — |
+| Emoji layer | Smiley key beside ?123, or the toolbar smiley button. Long press for skin tones. Recently used emoji sit in a row above the groups | — |
 | Spacebar cursor | Swipe sideways on the spacebar to move the cursor; hold shift first to select | *Gestures* |
 | Terminal layer | Toolbar → terminal button: Esc, Tab, sticky Ctrl/Alt, ^C ^D ^Z ^L ^R ^A ^E, arrows, shell symbols | — |
 
@@ -79,7 +79,7 @@ own rows. The symbol and number layers stay. Changes to the file apply as soon a
 | Entry | Keys |
 |---|---|
 | `{"chars": "abc"}` | One key per character. Long press offers accented letters, or your own with `"alternatives": {"a": "aäå"}` |
-| `"name"` or `{"key": "name"}` | `escape`, `tab`, `backspace`, `enter`, `shift`, `space`, `symbols`, `ctrl`, `alt`, `meta`, `left`, `right`, `up`, `down`, `language`, `hide`, and `gap` for empty space |
+| `"name"` or `{"key": "name"}` | `escape`, `tab`, `backspace`, `enter`, `shift`, `space`, `symbols`, `emoji`, `ctrl`, `alt`, `meta`, `left`, `right`, `up`, `down`, `language`, `hide`, and `gap` for empty space |
 | `"arrows"` | Left, up over down, and right, three keys wide |
 | `"weight": 1.5` | Width in normal keys, for any entry except `arrows` |
 

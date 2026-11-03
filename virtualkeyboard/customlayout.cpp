@@ -36,6 +36,7 @@ const QHash<QString, NamedKey> &namedKeys()
         {u"shift"_s, {u"ShiftKey"_s, u"sendDirectKeyEvents: true"_s}},
         {u"space"_s, {u"SpaceKey"_s, {}}},
         {u"symbols"_s, {u"SymbolModeKey"_s, {}}},
+        {u"emoji"_s, {u"LayerKey"_s, u"targetLayer: \"emoji\"; iconName: \"smiley-symbolic\""_s}},
         {u"ctrl"_s, {u"KeysymKey"_s, u"key: Qt.Key_Control; displayText: \"Ctrl\"; sticky: true"_s}},
         {u"alt"_s, {u"KeysymKey"_s, u"key: Qt.Key_Alt; displayText: \"Alt\"; sticky: true"_s}},
         {u"meta"_s, {u"KeysymKey"_s, u"key: Qt.Key_Meta; iconName: \"start-here-symbolic\"; displayText: \"\"; sticky: true"_s}},

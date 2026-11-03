@@ -1591,6 +1591,22 @@ private Q_SLOTS:
         tapInputPanel(keyPosition(3, 75.0 / 1200));
     }
 
+    // Verify the emoji key beside ?123 opens the emoji layer
+    void testEmojiKeyOpensEmojiLayer()
+    {
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+
+        tapInputPanel(keyPosition(3, 200.0 / 1000));
+        saveScreenshot(u"emoji-key"_s);
+
+        QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
+        tapInputPanel(keyPosition(0, 0.05));
+        QVERIFY(commitStringSpy.count() || commitStringSpy.wait());
+        QCOMPARE(commitStringSpy.last().first().toString(), u"😀"_s);
+
+        tapInputPanel(keyPosition(3, 75.0 / 1200));
+    }
+
     // Verify recently used emoji show in a row above the current group, instead of on a page of their own
     void testEmojiLayerShowsRecentRow()
     {
@@ -1627,7 +1643,8 @@ private Q_SLOTS:
         m_fakeInput->events.clear();
         QSignalSpy commitStringSpy(m_inputMethod->context(), &InputMethodContext::commitStringChanged);
 
-        const QPointF spaceCenter = keyPosition(3, 0.5);
+        // The spacebar spans 450 to 650 of the bottom row's 1000
+        const QPointF spaceCenter = keyPosition(3, 550.0 / 1000);
         dragInputPanel(spaceCenter - QPointF(100, 0), spaceCenter + QPointF(100, 0), 20);
 
         // KEY_RIGHT presses and releases
