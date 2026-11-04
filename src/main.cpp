@@ -11,12 +11,14 @@
 #include "inputpanelintegration.h"
 #include "logging.h"
 #include "plasmakeyboardsettings.h"
+#include "portalcolorscheme.h"
 
 #include <KAboutData>
 #include <KConfigWatcher>
 #include <KCrash>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
+#include <KSandbox>
 
 #include <QCommandLineParser>
 #include <QGuiApplication>
@@ -103,6 +105,12 @@ int main(int argc, char **argv)
     const QString configPath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + u'/' + PlasmaKeyboardSettings::self()->config()->name();
     auto *fileWatcher = new ConfigFileWatcher(configPath, &application);
     QObject::connect(fileWatcher, &ConfigFileWatcher::changed, &application, reloadSettings);
+
+    // The sandbox's copy of the desktop's colors goes stale when the color scheme changes
+    if (KSandbox::isFlatpak()) {
+        auto *colors = new PortalColorScheme(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + u"/plasma-keyboard/colors", &application);
+        colors->start();
+    }
 
     QQmlApplicationEngine view;
     KLocalization::setupLocalizedContext(&view);

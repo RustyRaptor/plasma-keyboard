@@ -51,6 +51,7 @@ find_package(Qt6GuiPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
 find_package(Qt6WaylandClientPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
+    ColorScheme
     CoreAddons
     I18n
     KCMUtils

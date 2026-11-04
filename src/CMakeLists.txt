@@ -51,6 +51,8 @@ target_sources(plasma-keyboard PRIVATE
     panelgeometry.h
     panelvisibility.cpp
     panelvisibility.h
+    portalcolorscheme.cpp
+    portalcolorscheme.h
     vkbdwaylandinputbackend.cpp
     vkbdwaylandinputbackend.h
     voiceinput.cpp
@@ -136,6 +138,7 @@ target_include_directories(plasma-keyboard PRIVATE
 
 target_link_libraries(plasma-keyboard
     PRIVATE
+    KF6::ColorScheme
     KF6::CoreAddons
     KF6::I18n
     KF6::I18nQml

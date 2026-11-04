@@ -171,6 +171,17 @@ ecm_add_test(configfilewatchertest.cpp ${CMAKE_SOURCE_DIR}/src/configfilewatcher
 )
 target_include_directories(configfilewatchertest PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
+ecm_add_test(portalcolorschemetest.cpp ${CMAKE_SOURCE_DIR}/src/portalcolorscheme.cpp
+    TEST_NAME portalcolorschemetest
+    LINK_LIBRARIES
+        KF6::ColorScheme
+        KF6::ConfigCore
+        Qt::DBus
+        Qt::Gui
+        Qt::Test
+)
+target_include_directories(portalcolorschemetest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
 ecm_add_test(emittedkeystest.cpp ${CMAKE_SOURCE_DIR}/src/emittedkeys.cpp
     TEST_NAME emittedkeystest
     LINK_LIBRARIES
