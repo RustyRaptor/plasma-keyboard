@@ -8,6 +8,7 @@
 > **This is a fork** ([RustyRaptor/plasma-keyboard](https://github.com/RustyRaptor/plasma-keyboard), branch `deck-features`)
 > that adds features aimed at the Steam Deck and other touch devices. See [Fork features](#fork-features) below.
 > Upstream lives at [invent.kde.org/plasma/plasma-keyboard](https://invent.kde.org/plasma/plasma-keyboard).
+> What's planned next (docking at any edge, a split keyboard, rotation, a layout editor) is in [ROADMAP.md](ROADMAP.md).
 
 
 The plasma-keyboard is a virtual keyboard and input engine designed to integrate in Plasma.
@@ -65,6 +66,8 @@ To see which keyboard is running, run `tools/deck/use-fork-keyboard.sh --status`
 such as `6.8.80 fork 40f2ac8 (2026-11-03, Flatpak deck)`, below the buttons of the *Move* overlay, at the end of
 its settings page, and in `plasma-keyboard --version`. A trailing `+` on the commit means the build had uncommitted
 changes. The stock keyboard has no *Move* button.
+The Flatpak follows the desktop's colors through the Settings portal, including switches between light and dark
+while it runs (sandboxed apps otherwise keep the colors they started with).
 Settings live in `~/.var/app/org.kde.plasma.keyboard/config/plasmakeyboardrc` and open from the toolbar's settings button.
 
 ### Custom layouts
