@@ -13,7 +13,7 @@ KDE session under a real KWin), and ends with a product test on the Steam Deck.
 
 The features in the README's table are done and passed product test A in the browser test desktop.
 Product test B, on the Deck with the Flatpak build, passed apart from the theme: the keyboard stayed light after
-the desktop switched to dark. Build `5172f53` fixes that. It still needs a Deck check:
+the desktop switched to dark. Build `e4b1ccb` fixes that: on the Deck the running keyboard followed a switch to light and back. Still to check by hand:
 
 1. Switch the desktop between light and dark while the keyboard is open, and again while it is closed.
 2. The keyboard should match each time, without logging out.
