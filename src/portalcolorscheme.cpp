@@ -116,6 +116,11 @@ void PortalColorScheme::start(const QDBusConnection &bus, const QString &service
 void PortalColorScheme::settingChanged(const QString &nameSpace, const QString &key, const QDBusVariant &value)
 {
     Q_UNUSED(value)
+    // xdg-desktop-portal-kde reports changes to kdeglobals' colors only as these
+    if (nameSpace == "org.freedesktop.appearance"_L1) {
+        m_rereadTimer.start();
+        return;
+    }
     if (!nameSpace.startsWith(kdeglobals)) {
         return;
     }

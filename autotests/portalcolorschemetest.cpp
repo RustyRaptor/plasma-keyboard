@@ -204,6 +204,17 @@ void PortalColorSchemeTest::testFollowsPortal()
     QVERIFY(!applied.wait(500));
     QCOMPARE(portal.reads, readsBefore + 1);
 
+    // xdg-desktop-portal-kde 6.7 reports no kdeglobals color keys when colors change, only the
+    // freedesktop appearance settings (sent again even when their values stay the same)
+    portal.settings = dark;
+    Q_EMIT portal.SettingChanged(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme"), QDBusVariant(1u));
+    Q_EMIT portal.SettingChanged(QStringLiteral("org.freedesktop.appearance"),
+                                 QStringLiteral("accent-color"),
+                                 QDBusVariant(QVariant::fromValue(QStringLiteral("unused"))));
+    QVERIFY(applied.wait());
+    QCOMPARE(kirigamiWindowColor(), QColor(46, 52, 64));
+    QCOMPARE(portal.reads, readsBefore + 2);
+
     bus.unregisterService(service);
     QDBusConnection::disconnectFromBus(QStringLiteral("fake-portal"));
 }

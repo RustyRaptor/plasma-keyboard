@@ -111,7 +111,7 @@ status() {
     fi
 
     if flatpak info --user "$app//$branch" >/dev/null 2>&1; then
-        say "Installed fork: $(flatpak run --branch="$branch" --command=plasma-keyboard "$app" --version 2>/dev/null || echo '(could not ask it)')"
+        say "Installed fork: $(flatpak run --branch="$branch" --env=QT_QPA_PLATFORM=offscreen --command=plasma-keyboard "$app" --version 2>/dev/null || echo '(could not ask it)')"
         # A keyboard started before the last install keeps running the old build
         local deployed started
         deployed=$(stat -c %Y "$(flatpak info --user --show-location "$app//$branch")")
