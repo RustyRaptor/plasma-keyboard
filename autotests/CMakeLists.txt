@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Aleix Pol <aleixpol@kde.org>
 # SPDX-License-Identifier: BSD-2-Clause
 
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Test WaylandCompositor)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS DBus Test WaylandCompositor)
 include(ECMAddTests)
 
 ecm_add_test(inputenginetest.cpp
@@ -22,6 +22,7 @@ ecm_add_test(mockinputmethodcompositor.cpp LINK_LIBRARIES
     KF6::ConfigCore
     PkgConfig::XKBCommon
     Qt::Core
+    Qt::DBus
     Qt::Gui
     Qt::GuiPrivate
     Qt::Test

@@ -18,6 +18,7 @@
 
 class OverlayController;
 class KWinFakeInput;
+class KWinVirtualKeyboard;
 class LlmCompletionClient;
 class VirtualKeyboardContext;
 class VkbdWaylandInputBackend;
@@ -94,15 +95,31 @@ private:
     void updateSuggestionSettings();
     void updateVoiceInputSettings();
 
+    /**
+     * Whether the keyboard has a text input it can type into.
+     *
+     * A context that KWin created for a pinned keyboard is not one, so keys
+     * have to be emulated instead of committed through the input method.
+     */
+    bool hasTextInput() const;
+    void updateTextInputSupport();
+
+    /**
+     * Shows a pinned panel again after KWin hid it with the input context.
+     */
+    void restorePinnedPanel();
+
     InputPlugin m_input;
     VkbdWaylandInputBackend *m_vkbdInputBackend = nullptr;
     VirtualKeyboardContext *m_virtualKeyboardContext = nullptr;
     KWinFakeInput *m_fakeInput = nullptr;
+    KWinVirtualKeyboard *m_virtualKeyboard = nullptr;
     OverlayController *m_overlayController = nullptr;
     LlmCompletionClient *m_llmClient = nullptr;
     VoiceInput *m_voiceInput = nullptr;
     PanelVisibility m_visibility;
     QPointer<QWindow> m_window;
+    bool m_activeClientSupportsTextInput = true;
     bool m_keyboardNavigationAvailable = false;
     bool m_keyboardNavigationActive = false;
 };

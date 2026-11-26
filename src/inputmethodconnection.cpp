@@ -12,6 +12,7 @@
 #include "inputmethod_p.h"
 #include "inputmethodhints.h"
 #include "kwinfakeinput.h"
+#include "kwinvirtualkeyboard.h"
 #include "llmcompletionclient.h"
 #include "plasmakeyboardsettings.h"
 #include "suggestioncontroller.h"
@@ -26,6 +27,8 @@
 #include "overlay/textexpansiontrigger.h"
 
 #include <QElapsedTimer>
+#include <QTimer>
+#include <cstdio>
 #include <QtWaylandClient/private/qwayland-text-input-unstable-v1.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
@@ -92,6 +95,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
     , m_vkbdInputBackend(new VkbdWaylandInputBackend(this))
     , m_virtualKeyboardContext(new VirtualKeyboardContext(m_vkbdInputBackend, this))
     , m_fakeInput(new KWinFakeInput(m_vkbdInputBackend, this))
+    , m_virtualKeyboard(new KWinVirtualKeyboard(this))
     , m_overlayController(new OverlayController(&m_input, this))
 {
     m_input.setGrabbing(true);
@@ -152,7 +156,9 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             m_vkbdInputBackend->reset();
         }
 
-        m_visibility.setHasContext(m_input.hasContext());
+        updateTextInputSupport();
+
+        // KWin 6.8 hides the input panel along with the context; give a pinned keyboard its panel back
     });
 
     connect(&m_input, &InputPlugin::surroundingTextChanged, this, [this, syncBackendState] {
@@ -167,6 +173,8 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
 
     connect(&m_input, &InputPlugin::contentTypeChanged, this, [this, syncBackendState] {
         syncBackendState();
+        updateTextInputSupport();
+        restorePinnedPanel();
     });
 
     connect(&m_input, &InputPlugin::resetRequested, this, [this] {
@@ -261,7 +269,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             return;
         }
 
-        if (!m_input.hasContext()) {
+        if (!hasTextInput()) {
             // Pinned or lingering without a text input: emulate the keys instead
             m_fakeInput->sendText(text);
             return;
@@ -275,7 +283,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             return;
         }
 
-        if (!m_input.hasContext()) {
+        if (!hasTextInput()) {
             // Without surrounding text only deleting right before the cursor can be emulated
             if (index == -length) {
                 for (int i = 0; i < length; ++i) {
@@ -294,7 +302,7 @@ InputMethodConnection::InputMethodConnection(QObject *parent)
             return false;
         }
 
-        if (m_fakeInput->shouldUseFakeInput(key) || (!m_input.hasContext() && m_fakeInput->supportsKey(key))) {
+        if (m_fakeInput->shouldUseFakeInput(key) || (!hasTextInput() && m_fakeInput->supportsKey(key))) {
             // Send this key over kwin-fake-input instead of input-method-v1 (true keyboard emulation)
             return m_fakeInput->sendKeyPressed(key, pressed);
         }
@@ -456,6 +464,40 @@ void InputMethodConnection::updateVoiceInputSettings()
 VoiceInput *InputMethodConnection::voiceInput() const
 {
     return m_voiceInput;
+}
+
+bool InputMethodConnection::hasTextInput() const
+{
+    return m_input.hasContext() && m_activeClientSupportsTextInput;
+}
+
+void InputMethodConnection::updateTextInputSupport()
+{
+    // Only KWin knows whether the context belongs to a real text input. The
+    // context forceActivate() creates for a pinned keyboard does not accept text.
+    m_activeClientSupportsTextInput = !m_input.hasContext() || m_virtualKeyboard->activeClientSupportsTextInput();
+    m_visibility.setHasContext(hasTextInput());
+}
+
+void InputMethodConnection::restorePinnedPanel()
+{
+    fprintf(stderr, "RESTORE ctx=%d pinned=%d visible=%d panel=%d\n",
+            int(m_input.hasContext()),
+            int(m_visibility.pinned()),
+            int(m_visibility.visible()),
+            int(m_virtualKeyboard->panelVisible()));
+    qWarning() << "KWINRESTORE: hasContext=" << m_input.hasContext() << "pinned=" << m_visibility.pinned() << "visible=" << m_visibility.visible();
+    // If we still have a text context, or the keyboard isn't pinned, nothing to do.
+    if (m_input.hasContext() || !m_visibility.pinned()) {
+        return;
+    }
+    // If the panel is still visible, KWin hasn't hidden it yet.
+    if (m_visibility.visible()) {
+        return;
+    }
+    // Panel is hidden, pinned, and has no text context – KWin 6.8 hid it.
+    // Ask KWin to show it again via forceActivate().
+    m_virtualKeyboard->forceActivate();
 }
 
 void InputMethodConnection::updateWindowVisible()

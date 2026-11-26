@@ -33,6 +33,8 @@ target_sources(plasma-keyboard PRIVATE
     keycodes.h
     kwinfakeinput.cpp
     kwinfakeinput.h
+    kwinvirtualkeyboard.cpp
+    kwinvirtualkeyboard.h
     main.cpp
     inputpanelintegration.cpp
     inputpanelintegration.h

@@ -4,6 +4,10 @@
 #include <KConfig>
 #include <KConfigGroup>
 #include <QCoreApplication>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusVariant>
+#include <QDBusVirtualObject>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QGuiApplication>
@@ -649,6 +653,56 @@ private:
     InputPanelV1 *m_inputPanel = nullptr;
 };
 
+// Stands in for KWin's virtual-keyboard D-Bus interface, which is how a pinned
+// keyboard asks for its panel back after KWin 6.8 hides it on deactivation.
+class FakeKWinVirtualKeyboard : public QDBusVirtualObject
+{
+    Q_OBJECT
+
+public:
+    explicit FakeKWinVirtualKeyboard(QObject *parent = nullptr)
+        : QDBusVirtualObject(parent)
+    {
+    }
+
+    bool supportsTextInput = true;
+    bool panelVisible = true;
+    int forceActivateCalls = 0;
+
+    QString introspect(const QString &) const override
+    {
+        return QString();
+    }
+
+    bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
+    {
+        qInfo() << "fake KWin got" << message.interface() << message.member() << message.arguments();
+        if (message.interface() == u"org.kde.kwin.VirtualKeyboard"_s && message.member() == u"forceActivate"_s) {
+            ++forceActivateCalls;
+            connection.send(message.createReply());
+            return true;
+        }
+
+        if (message.interface() == u"org.freedesktop.DBus.Properties"_s && message.member() == u"Get"_s) {
+            const QString name = message.arguments().value(1).toString();
+            QVariant value;
+            if (name == u"visible"_s) {
+                value = panelVisible;
+            } else if (name == u"activeClientSupportsTextInput"_s) {
+                value = supportsTextInput;
+            } else {
+                connection.send(message.createErrorReply(u"org.freedesktop.DBus.Error.UnknownProperty"_s, name));
+                return true;
+            }
+            connection.send(message.createReply(QVariant::fromValue(QDBusVariant(value))));
+            return true;
+        }
+
+        connection.send(message.createErrorReply(u"org.freedesktop.DBus.Error.UnknownMethod"_s, message.member()));
+        return true;
+    }
+};
+
 class MockInputMethodCompositorTest : public QObject
 {
     Q_OBJECT
@@ -707,6 +761,11 @@ private Q_SLOTS:
 
         m_fakeInput = std::make_unique<FakeInputV1>(m_compositor.get());
         m_fakeInput->initialize();
+
+        m_fakeKWin = std::make_unique<FakeKWinVirtualKeyboard>();
+        auto bus = QDBusConnection::sessionBus();
+        m_haveFakeKWin = bus.isConnected() && bus.registerService(u"org.kde.KWin"_s)
+            && bus.registerVirtualObject(u"/VirtualKeyboard"_s, m_fakeKWin.get(), QDBusConnection::SubPath);
 
         m_pointerGestures = std::make_unique<PointerGesturesV1>(m_compositor.get());
         m_pointerGestures->initialize();
@@ -1747,6 +1806,37 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
     }
 
+    // KWin 6.8 hides the input panel when the input method loses its context. A pinned
+    // keyboard has to ask KWin to show the panel again, or it vanishes on the Deck.
+    void testPinnedKeyboardAsksKWinToShowItself()
+    {
+        if (!m_haveFakeKWin) {
+            QSKIP("No session bus to stand in for KWin");
+        }
+
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+        tapInputPanel(toolbarButtonPosition(-2));
+
+        // Simulate KWin 6.8 behavior: after deactivate the panel gets hidden.
+        // On real KWin 6.8+ this happens in InputMethod::setActive(false) -> hide().
+        // The pinned keyboard has to ask KWin to show it again via forceActivate.
+        m_fakeKWin->panelVisible = false;
+        m_fakeKWin->supportsTextInput = false;
+        const int before = m_fakeKWin->forceActivateCalls;
+
+        m_inputMethod->sendDeactivate();
+        wl_display_flush_clients(m_compositor->display());
+
+        QTRY_COMPARE_WITH_TIMEOUT(m_fakeKWin->forceActivateCalls, before + 1, 3000);
+
+        // Put the keyboard back the way the following tests expect
+        m_fakeKWin->panelVisible = true;
+        m_fakeKWin->supportsTextInput = true;
+        tapInputPanel(toolbarButtonPosition(-2));
+        reactivateInputMethod();
+        QTRY_VERIFY_WITH_TIMEOUT(inputPanelMapped(), 5000);
+    }
+
     // Verify the toolbar brought back over suggestions ends where the toggle at the right edge starts,
     // instead of hiding its rightmost button (settings) under it
     void testToolbarOverSuggestionsLeavesRoomForToggle()
@@ -2118,6 +2208,8 @@ private:
     std::unique_ptr<InputMethodV1> m_inputMethod;
     std::unique_ptr<InputPanelV1> m_inputPanel;
     std::unique_ptr<FakeInputV1> m_fakeInput;
+    std::unique_ptr<FakeKWinVirtualKeyboard> m_fakeKWin;
+    bool m_haveFakeKWin = false;
     std::unique_ptr<PointerGesturesV1> m_pointerGestures;
     QWaylandView m_panelView;
     std::unique_ptr<QProcess> m_child;
